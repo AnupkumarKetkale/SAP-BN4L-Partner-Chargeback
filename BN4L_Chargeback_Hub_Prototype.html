@@ -1,0 +1,1034 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head><body><title>BN4L Chargeback Hub</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
+<style>
+:root{
+  --bg:#F3F5F9; --surface:#FFFFFF; --surface-2:#F8FAFC; --ink:#172033; --muted:#5A6477; --faint:#8A94A6;
+  --line:#DCE2EB; --line-soft:#E9EDF3;
+  --accent:#0B63CE; --accent-ink:#FFFFFF; --accent-soft:#E7F0FB; --accent-text:#0A58B8;
+  --good:#1B7F4F; --good-soft:#E3F3EA; --warn:#9A6200; --warn-soft:#FBF0DA; --crit:#C23A2F; --crit-soft:#FBE7E5;
+  --s1:#2a78d6; --s2:#eb6834; --grid:#E6EAF0;
+  --shadow:0 1px 2px rgba(20,33,61,.06),0 4px 14px rgba(20,33,61,.05);
+  --p-admin:#2a78d6; --p-fin:#4a3aa7; --p-bot:#1baf7a; --p-exec:#eb6834; --p-aud:#52514e;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0E131B; --surface:#161D28; --surface-2:#1B2330; --ink:#E7ECF4; --muted:#A1ACBE; --faint:#7A869A;
+  --line:#2A3443; --line-soft:#222B38; --accent:#4C95F0; --accent-ink:#0B1422; --accent-soft:#1B2D46; --accent-text:#7FB4F7;
+  --good:#4CC38A; --good-soft:#153326; --warn:#E3AE4F; --warn-soft:#3A2D12; --crit:#EF7A70; --crit-soft:#3B1B19;
+  --s1:#3987e5; --s2:#d95926; --grid:#253040; --shadow:none;
+  --p-admin:#3987e5; --p-fin:#9085e9; --p-bot:#199e70; --p-exec:#d95926; --p-aud:#8b8a84;
+  color-scheme:dark;}}
+:root[data-theme="dark"]{
+  --bg:#0E131B; --surface:#161D28; --surface-2:#1B2330; --ink:#E7ECF4; --muted:#A1ACBE; --faint:#7A869A;
+  --line:#2A3443; --line-soft:#222B38; --accent:#4C95F0; --accent-ink:#0B1422; --accent-soft:#1B2D46; --accent-text:#7FB4F7;
+  --good:#4CC38A; --good-soft:#153326; --warn:#E3AE4F; --warn-soft:#3A2D12; --crit:#EF7A70; --crit-soft:#3B1B19;
+  --s1:#3987e5; --s2:#d95926; --grid:#253040; --shadow:none;
+  --p-admin:#3987e5; --p-fin:#9085e9; --p-bot:#199e70; --p-exec:#d95926; --p-aud:#8b8a84;
+  color-scheme:dark;}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{background:var(--bg);color:var(--ink);font-family:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",Arial,sans-serif;font-size:14px;line-height:1.45}
+.mono{font-family:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;font-size:12.5px}
+.num{font-variant-numeric:tabular-nums}
+button,select,input,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+h1,h2,h3{margin:0;text-wrap:balance;line-height:1.2}
+h1{font-size:22px;font-weight:600}
+h2{font-size:16px;font-weight:600}
+h3{font-size:14px;font-weight:600}
+p{margin:0}
+.eyebrow{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:600}
+
+/* shell */
+.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:var(--surface);border-bottom:1px solid var(--line);display:flex;align-items:center;gap:16px;padding-block:10px;padding-inline:16px;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:10px;min-width:0}
+.brand-mark{width:30px;height:30px;border-radius:7px;background:var(--accent);display:grid;place-items:center;color:var(--accent-ink);font-weight:700;font-size:13px;flex:none}
+.brand b{font-weight:600;font-size:15px;white-space:nowrap}
+.brand small{display:block;color:var(--muted);font-size:11.5px;white-space:nowrap}
+.top-right{margin-left:auto;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.period-pill{display:flex;align-items:center;gap:8px;border:1px solid var(--line);border-radius:8px;padding:5px 10px;background:var(--surface-2);font-size:12.5px}
+.persona-btn{display:flex;align-items:center;gap:8px;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:4px 12px 4px 4px}
+.avatar{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;color:#fff;font-weight:600;font-size:11.5px;flex:none}
+.icon-btn{position:relative;border:1px solid var(--line);background:var(--surface);border-radius:8px;width:36px;height:36px;display:grid;place-items:center}
+.icon-btn svg{width:18px;height:18px}
+.badge-dot{position:absolute;top:-5px;right:-5px;min-width:18px;height:18px;border-radius:9px;background:var(--crit);color:#fff;font-size:10.5px;font-weight:600;display:grid;place-items:center;padding:0 4px}
+
+.flow{background:var(--surface);border-bottom:1px solid var(--line);padding-block:10px;padding-inline:16px}
+.flow-head{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:8px}
+.flow-head .eyebrow{color:var(--accent-text)}
+.flow-steps{display:flex;gap:6px;overflow-x:auto;padding-bottom:2px}
+.fstep{flex:1 0 150px;display:flex;gap:8px;align-items:flex-start;border:1px solid var(--line);border-radius:8px;padding:7px 9px;background:var(--surface-2);text-align:left;min-width:150px}
+.fstep .n{width:20px;height:20px;border-radius:50%;border:1.5px solid var(--faint);display:grid;place-items:center;font-size:11px;font-weight:600;color:var(--muted);flex:none;margin-top:1px}
+.fstep .t{font-size:12px;font-weight:500;line-height:1.3}
+.fstep .w{font-size:11px;color:var(--muted)}
+.fstep.done{background:var(--good-soft);border-color:transparent}
+.fstep.done .n{background:var(--good);border-color:var(--good);color:#fff}
+.fstep.current{border-color:var(--accent);background:var(--accent-soft);box-shadow:inset 0 0 0 1px var(--accent)}
+.fstep.current .n{border-color:var(--accent);color:var(--accent-text)}
+
+.layout{display:grid;grid-template-columns:232px minmax(0,1fr);min-height:calc(100% - 120px)}
+.nav{background:var(--surface);border-right:1px solid var(--line);padding-block:16px;padding-inline:12px;display:flex;flex-direction:column;gap:4px}
+.nav .who{padding:4px 8px 12px;border-bottom:1px solid var(--line-soft);margin-bottom:8px}
+.nav .who b{display:block;font-size:13.5px}
+.nav .who span{font-size:12px;color:var(--muted)}
+.nav a{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:7px;color:var(--ink);text-decoration:none;font-size:13.5px;cursor:pointer}
+.nav a:hover{background:var(--surface-2)}
+.nav a.on{background:var(--accent-soft);color:var(--accent-text);font-weight:600}
+.nav a .cnt{margin-left:auto;font-size:11px;background:var(--crit-soft);color:var(--crit);border-radius:10px;padding:0 7px;font-weight:600}
+.nav .sep{height:1px;background:var(--line-soft);margin:8px 4px}
+main{padding-block:20px 48px;padding-inline:24px;min-width:0}
+.page-head{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:16px}
+.page-head p{color:var(--muted);margin-top:4px;max-width:70ch}
+.stack{display:flex;flex-direction:column;gap:16px}
+.grid{display:grid;gap:16px}
+.g2{grid-template-columns:repeat(2,minmax(0,1fr))}
+.g3{grid-template-columns:repeat(3,minmax(0,1fr))}
+.g4{grid-template-columns:repeat(4,minmax(0,1fr))}
+.g-main{grid-template-columns:minmax(0,1.65fr) minmax(0,1fr)}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:10px;box-shadow:var(--shadow)}
+.card-h{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 16px;border-bottom:1px solid var(--line-soft);flex-wrap:wrap}
+.card-h p{color:var(--muted);font-size:12.5px;margin-top:2px}
+.card-b{padding:16px}
+.kpi{padding:14px 16px;display:flex;flex-direction:column;gap:4px}
+.kpi .v{font-size:24px;font-weight:600;font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+.kpi .l{font-size:12px;color:var(--muted)}
+.kpi .d{font-size:12px;color:var(--muted)}
+.role-strip{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:0;border:1px solid var(--line);border-radius:10px;background:var(--surface);overflow:hidden}
+.role-strip>div{padding:12px 16px;border-right:1px solid var(--line-soft)}
+.role-strip>div:last-child{border-right:0}
+.role-strip ul{margin:6px 0 0;padding-left:16px;font-size:12.5px;color:var(--ink)}
+.role-strip li{margin-bottom:2px}
+
+/* table */
+.tw{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{font-size:11.5px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);font-weight:600;text-align:left;padding:9px 12px;border-bottom:1px solid var(--line);background:var(--surface-2);white-space:nowrap}
+td{padding:9px 12px;border-bottom:1px solid var(--line-soft);vertical-align:middle}
+td.r,th.r{text-align:right;font-variant-numeric:tabular-nums}
+tr:last-child td{border-bottom:0}
+tfoot td{font-weight:600;border-top:1px solid var(--line);background:var(--surface-2)}
+tr.hl td{background:var(--accent-soft)}
+
+.chip{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:600;border-radius:999px;padding:2px 9px;white-space:nowrap}
+.chip::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor}
+.chip.good{background:var(--good-soft);color:var(--good)}
+.chip.warn{background:var(--warn-soft);color:var(--warn)}
+.chip.crit{background:var(--crit-soft);color:var(--crit)}
+.chip.info{background:var(--accent-soft);color:var(--accent-text)}
+.chip.mute{background:var(--surface-2);color:var(--muted);border:1px solid var(--line)}
+
+.btn{display:inline-flex;align-items:center;gap:7px;border-radius:8px;border:1px solid var(--line);background:var(--surface);padding:7px 13px;font-size:13px;font-weight:500;white-space:nowrap}
+.btn:hover{background:var(--surface-2)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn.primary:hover{filter:brightness(1.07)}
+.btn.danger{color:var(--crit);border-color:var(--crit-soft)}
+.btn.sm{padding:4px 9px;font-size:12px}
+.btn[disabled]{opacity:.45;cursor:not-allowed;filter:none}
+.btn svg{width:15px;height:15px}
+.row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.muted{color:var(--muted)}
+.small{font-size:12.5px}
+.hint{font-size:12px;color:var(--muted)}
+
+.check{display:flex;gap:12px;align-items:flex-start;padding:12px 0;border-bottom:1px solid var(--line-soft)}
+.check:last-child{border-bottom:0}
+.check .ic{width:24px;height:24px;border-radius:50%;display:grid;place-items:center;flex:none;font-size:12px;font-weight:700}
+.check .ic.ok{background:var(--good);color:#fff}
+.check .ic.no{border:2px solid var(--line);color:var(--muted)}
+.check .ic.bad{background:var(--warn-soft);color:var(--warn)}
+.check .body{flex:1;min-width:0}
+.check .body b{font-weight:600;font-size:13.5px}
+.check .body p{font-size:12.5px;color:var(--muted)}
+
+.field{display:flex;flex-direction:column;gap:5px}
+.field label{font-size:12px;font-weight:600;color:var(--muted)}
+.field input,.field select,.field textarea{border:1px solid var(--line);border-radius:7px;padding:7px 10px;background:var(--surface);min-width:0}
+.field textarea{min-height:80px;resize:vertical}
+select.inline{border:1px solid var(--line);border-radius:7px;padding:4px 8px;background:var(--surface);max-width:220px}
+input[type=range]{width:100%;accent-color:var(--accent)}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;flex-wrap:wrap}
+.seg button{border:0;background:var(--surface);padding:6px 12px;font-size:12.5px;border-right:1px solid var(--line)}
+.seg button:last-child{border-right:0}
+.seg button.on{background:var(--accent);color:var(--accent-ink)}
+
+.banner{display:flex;gap:12px;align-items:flex-start;border-radius:10px;padding:12px 16px;font-size:13px}
+.banner.info{background:var(--accent-soft);color:var(--ink)}
+.banner.good{background:var(--good-soft)}
+.banner.warn{background:var(--warn-soft)}
+.banner b{font-weight:600}
+
+.legend{display:flex;gap:16px;flex-wrap:wrap;font-size:12px;color:var(--muted)}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:6px;vertical-align:-1px}
+svg text{font-family:"IBM Plex Sans",system-ui,sans-serif}
+.chart-wrap{width:100%;overflow-x:auto}
+#tip{position:fixed;z-index:60;pointer-events:none;background:var(--ink);color:var(--surface);font-size:12px;padding:7px 10px;border-radius:7px;max-width:260px;box-shadow:0 4px 14px rgba(0,0,0,.2);line-height:1.4}
+#tip b{font-weight:600}
+
+.rep{display:flex;flex-direction:column;gap:10px;padding:16px}
+.rep .fmt{display:flex;gap:8px;margin-top:auto;flex-wrap:wrap}
+.rep .meta{font-size:12px;color:var(--muted)}
+.tag{font-size:11px;border:1px solid var(--line);border-radius:5px;padding:1px 6px;color:var(--muted)}
+
+.drawer-bg{position:fixed;inset:0;background:rgba(10,16,26,.42);z-index:40;display:flex;justify-content:flex-end}
+.drawer{width:min(520px,100%);height:100%;background:var(--surface);border-left:1px solid var(--line);display:flex;flex-direction:column;padding-top:env(safe-area-inset-top,0px)}
+.drawer .dh{padding:16px 20px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+.drawer .db{padding:20px;overflow:auto;flex:1;display:flex;flex-direction:column;gap:14px}
+.drawer .df{padding:14px 20px;border-top:1px solid var(--line);display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap;padding-bottom:calc(14px + env(safe-area-inset-bottom,0px))}
+.menu{position:absolute;right:0;top:44px;width:min(360px,calc(100vw - 32px));background:var(--surface);border:1px solid var(--line);border-radius:10px;box-shadow:0 10px 30px rgba(10,16,26,.18);z-index:30;overflow:hidden}
+.menu .mi{display:flex;gap:10px;align-items:center;padding:10px 14px;border:0;background:none;width:100%;text-align:left;border-bottom:1px solid var(--line-soft)}
+.menu .mi:hover{background:var(--surface-2)}
+.menu .mi.on{background:var(--accent-soft)}
+.menu .mi b{display:block;font-size:13px;font-weight:600}
+.menu .mi span{font-size:12px;color:var(--muted)}
+.rel{position:relative}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(20px + env(safe-area-inset-bottom,0px));z-index:70;background:var(--ink);color:var(--surface);padding:10px 16px;border-radius:9px;font-size:13px;box-shadow:0 6px 20px rgba(0,0,0,.25);max-width:calc(100vw - 32px)}
+.timeline{display:flex;flex-direction:column;gap:0;border-left:2px solid var(--line);margin-left:6px;padding-left:16px}
+.timeline .ev{position:relative;padding-bottom:12px}
+.timeline .ev::before{content:"";position:absolute;left:-22px;top:4px;width:10px;height:10px;border-radius:50%;background:var(--accent);border:2px solid var(--surface)}
+.timeline .ev b{font-size:13px;font-weight:600}
+.timeline .ev p{font-size:12px;color:var(--muted)}
+.persona-card{display:flex;flex-direction:column}
+.persona-card .ph{display:flex;gap:12px;align-items:center;padding:16px;border-bottom:1px solid var(--line-soft)}
+.persona-card .ph .avatar{width:44px;height:44px;font-size:15px}
+.persona-card .pb{padding:14px 16px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.persona-card .pb ul{margin:4px 0 0;padding-left:16px;font-size:12.5px}
+.persona-card .pb li{margin-bottom:2px}
+.persona-card .quote{font-style:italic;color:var(--muted);font-size:13px;padding:0 16px 14px}
+.matrix td.c{text-align:center}
+.yes{color:var(--good);font-weight:700}
+.ro{color:var(--accent-text);font-weight:600;font-size:12px}
+.no{color:var(--faint)}
+.sample-note{font-size:11.5px;color:var(--muted);border:1px dashed var(--line);border-radius:6px;padding:2px 8px}
+.bar-track{height:6px;border-radius:3px;background:var(--line-soft);overflow:hidden;min-width:60px}
+.bar-track i{display:block;height:100%;background:var(--s1);border-radius:3px}
+.empty{padding:28px;text-align:center;color:var(--muted)}
+
+@media (max-width:1100px){.g4{grid-template-columns:repeat(2,minmax(0,1fr))}.g-main{grid-template-columns:minmax(0,1fr)}.g3{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:820px){
+  .layout{grid-template-columns:minmax(0,1fr)}
+  .nav{flex-direction:row;overflow-x:auto;border-right:0;border-bottom:1px solid var(--line);padding-block:8px;padding-inline:16px}
+  .nav .who,.nav .sep{display:none}
+  .nav a{white-space:nowrap}
+  main{padding-inline:16px}
+  .g2,.g3{grid-template-columns:minmax(0,1fr)}
+  .role-strip{grid-template-columns:minmax(0,1fr)}
+  .role-strip>div{border-right:0;border-bottom:1px solid var(--line-soft)}
+  .persona-card .pb{grid-template-columns:minmax(0,1fr)}
+  .brand small{display:none}
+}
+@media (max-width:480px){.g4{grid-template-columns:minmax(0,1fr)}.kpi .v{font-size:21px}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+
+<div id="app"></div>
+<div id="tip" hidden></div>
+
+<script>
+/* =====================================================================
+   BN4L Chargeback Hub — clickable prototype (sample data)
+   ===================================================================== */
+(function(){
+'use strict';
+
+/* ---------- helpers ---------- */
+const $ = (s, r=document) => r.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const usd = (n, d=2) => (n<0?'-':'') + '$' + Math.abs(n).toLocaleString('en-US',{minimumFractionDigits:d,maximumFractionDigits:d});
+const usd0 = n => usd(n,0);
+const int = n => Math.round(n).toLocaleString('en-US');
+const pct = (n, d=1) => (n*100).toFixed(d) + '%';
+const r2 = n => Math.round(n*100)/100;
+let seed = 7; const rnd = () => (seed = (seed*16807) % 2147483647) / 2147483647;
+const NOW = () => { const d = new Date(); return '2026-09-26 ' + String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0'); };
+const ICON = {
+  bell:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 1 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>',
+  xls:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="m8 13 4 5m0-5-4 5"/></svg>',
+  pdf:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M9 15h6M9 18h4"/></svg>',
+  arrow:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>',
+  play:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/></svg>',
+  close:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>',
+  people:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16 4.3a3.5 3.5 0 0 1 0 7.4M21.5 20a6.5 6.5 0 0 0-4-6"/></svg>'
+};
+
+/* ---------- reference data ---------- */
+const PERIOD = { id:'2026-08', label:'August 2026', due:'2026-09-30', window:10 };
+const BOTTLERS = [
+  ['B01','Great Lakes Bottling Co.','Midwest',14820,168,'BP-100231','CC-1100'],
+  ['B02','Gulf Coast Beverage Partners','South Central',18240,196,'BP-100244','CC-1200'],
+  ['B03','Cascade Bottling Group','Pacific Northwest',9460,112,'BP-100259','CC-1300'],
+  ['B04','Heartland Beverage Co.','Plains',11380,131,'BP-100262','CC-1400'],
+  ['B05','Tidewater Bottling','Mid-Atlantic',7920,94,'BP-100275','CC-1500'],
+  ['B06','Sierra Valley Beverages','West',12760,149,'BP-100288','CC-1600'],
+  ['B07','Piedmont Bottling Co.','Southeast',16110,183,'BP-100291','CC-1700'],
+  ['B08','Lone Prairie Beverage','Southwest',8640,101,'BP-100304','CC-1800'],
+  ['B09','Northern Pines Bottling','Upper Midwest',5230,66,'BP-100317','CC-1900'],
+  ['B10','Bayou Bottling Co.','Gulf',6980,83,'BP-100320','CC-2000'],
+  ['B11','Blue Ridge Beverage','Appalachia',4410,58,'BP-100333','CC-2100'],
+  ['B12','Desert Sun Bottling','Mountain',10150,122,'BP-100346','CC-2200'],
+  ['B13','Coastal Carolina Beverage','Carolinas',13290,154,'BP-100359','CC-2300']
+].map(([id,name,region,fo,users,bp,cc],i)=>{
+  seed = 11+i*7; const ev = Math.round(fo*(5.8+rnd()*0.9)); const te = Math.round(fo*(1.25+rnd()*0.3));
+  return {id,name,region,fo,users,ev,te,bp,cc,locations:6+Math.round(rnd()*14),iasGroup:'BN4L_'+id+'_USERS',status:'Active',contact:['finance@','ap@'][i%2]+name.toLowerCase().split(' ')[0].replace(/[^a-z]/g,'')+'.example'};
+});
+const BMAP = Object.fromEntries(BOTTLERS.map(b=>[b.id,b]));
+const METRICS = { fo:{label:'Freight orders processed',short:'Freight orders',unit:'orders',key:'fo'}, users:{label:'Active users',short:'Active users',unit:'users',key:'users'}, ev:{label:'Tracking events',short:'Tracking events',unit:'events',key:'ev'}, te:{label:'Tenders / carrier interactions',short:'Tenders',unit:'tenders',key:'te'} };
+const COST_LINES = [
+  {line:'SAP BN4L subscription (shared tenant)',source:'SAP invoice 90412233',amt:138500},
+  {line:'SAP BN4L transaction overage',source:'SAP invoice 90412233',amt:11240},
+  {line:'SAP Integration Suite (hub share)',source:'BTP Resource Consumption API',amt:7820},
+  {line:'SAP HANA Cloud (chargeback hub)',source:'BTP Resource Consumption API',amt:5960},
+  {line:'SAP Analytics Cloud (hub share)',source:'BTP Resource Consumption API',amt:3480},
+  {line:'Chargeback hub runtime (Cloud Foundry)',source:'BTP Resource Consumption API',amt:1650}
+];
+const HIST = [['2026-03','Mar 2026',161200],['2026-04','Apr 2026',163900],['2026-05','May 2026',165300],['2026-06','Jun 2026',166050],['2026-07','Jul 2026',167480]];
+const PERSONAS = {
+  admin:{key:'admin',name:'Priya Raman',init:'PR',title:'BTP Platform Administrator',org:'CONA Shared Services IT',color:'var(--p-admin)',role:'CB_PlatformAdmin',
+    goals:['Keep daily BN4L extracts complete and on time','Attribute ≥ 99% of volume to a bottler','Keep mappings and exclusions accurate'],
+    tasks:['Monitor and re-run integration runs','Work the suspense queue and create mapping rules','Maintain bottler master, exclusions and alerts'],
+    pains:['Silent extract failures surface only at month end','New business partners arrive without a bottler','Test and technical traffic inflates usage'],
+    kpis:['Extract success rate','Attribution hit rate','Suspense volume and age'],
+    scope:'All bottlers · technical data · no rate card edits',
+    quote:'If one extract fails on the 31st, the whole close slips. I need to see it before finance does.'},
+  fin:{key:'fin',name:'Mark Ellison',init:'ME',title:'Chargeback Finance Manager',org:'CONA Finance',color:'var(--p-fin)',role:'CB_FinanceManager',
+    goals:['Close each period by the 30th of the next month','Bill exactly what CONA paid SAP — no gap, no surplus','Resolve disputes inside the 10-day window'],
+    tasks:['Approve the rate card and metric','Reconcile allocation to the SAP invoice','Lock the period and issue statements','Decide disputes and carry credits forward'],
+    pains:['One combined SAP bill with no split','Manual spreadsheets and email disputes','Rate changes with no audit trail'],
+    kpis:['Allocated vs invoiced','Days to close','Open disputes and credit value'],
+    scope:'All bottlers · commercial data · approve and lock',
+    quote:'The 13 statements have to add up to the SAP invoice to the cent, and I have to be able to prove it.'},
+  bot:{key:'bot',name:'Dana Whitfield',init:'DW',title:'Finance Lead',org:'Great Lakes Bottling Co. (B01)',color:'var(--p-bot)',role:'CB_BottlerFinance · B01',bottler:'B01',
+    goals:['Understand and budget our BN4L cost','Check the charge matches our real usage','Raise and track disputes quickly'],
+    tasks:['Review monthly usage and projected charge','Download statements as PDF and Excel','Raise a dispute on a statement line and follow it'],
+    pains:['Charges arrive with no usage evidence','No way to see which users drive cost','Disputes lost in email threads'],
+    kpis:['Monthly charge and trend','Cost per freight order','Share of network usage'],
+    scope:'Own bottler only (B01) · row-level security',
+    quote:'Show me what we used and how you got to the number, and I will pay it.'},
+  exec:{key:'exec',name:'Jordan Blake',init:'JB',title:'VP Shared Services & CIO',org:'CONA Leadership',color:'var(--p-exec)',role:'CB_Executive',
+    goals:['Recover 100% of BN4L platform cost','Keep cost growth below volume growth','Keep bottler relationships healthy'],
+    tasks:['Review cost by bottler and trends','Watch recovery rate and disputes','Share the monthly summary with the bottler council'],
+    pains:['No per-bottler view of platform cost','Cost discussions based on anecdotes'],
+    kpis:['Total cost and recovery %','Cost per freight order','Month-over-month movers'],
+    scope:'All bottlers · read only',
+    quote:'I want one page that tells me whether the shared platform pays for itself.'},
+  aud:{key:'aud',name:'Sam Ortiz',init:'SO',title:'Internal Audit Lead',org:'CONA Internal Audit',color:'var(--p-aud)',role:'CB_Auditor',
+    goals:['Prove every charge traces to source data','Confirm locked periods were never changed','Check segregation of duties'],
+    tasks:['Review the audit trail and rule versions','Inspect period snapshots','Export evidence for the audit file'],
+    pains:['Evidence spread across tools','Changes after close with no record'],
+    kpis:['Changes after lock (target 0)','Rule versions per period','Dispute outcomes'],
+    scope:'All bottlers · read only · audit data',
+    quote:'If it is not in the log with a who and a when, it did not happen.'}
+};
+const NAV = {
+  admin:[['overview','Overview'],['runs','Integration runs'],['suspense','Suspense queue'],['master','Bottlers & mapping'],['exclusions','Exclusions'],['reports','Reports']],
+  fin:[['close','Period close'],['allocation','Allocation'],['rate','Rate card & policy'],['recon','Reconciliation'],['disputes','Disputes'],['reports','Reports']],
+  bot:[['usage','My usage'],['statements','Statements'],['mydisputes','My disputes'],['reports','Reports']],
+  exec:[['dash','Executive dashboard'],['reports','Reports']],
+  aud:[['audit','Audit trail'],['snapshots','Snapshots & versions'],['reports','Reports']]
+};
+
+/* ---------- state ---------- */
+function freshState(){
+  const suspense = [
+    {id:'SUS-0081',obj:'Freight order',key:'Shipper BP-100877 (new partner)',reason:'Unknown business partner',fo:212,ev:1290,first:'2026-08-04',sug:'B02',conf:0.96},
+    {id:'SUS-0082',obj:'Freight order',key:'User JKOWALSKI (no bottler group)',reason:'User without bottler group',fo:148,ev:870,first:'2026-08-09',sug:'B01',conf:0.93},
+    {id:'SUS-0083',obj:'Tender',key:'Location LOC-TX-ELP-02',reason:'Location not mapped',fo:96,ev:540,first:'2026-08-11',sug:'B08',conf:0.91},
+    {id:'SUS-0084',obj:'Freight order',key:'Ordering party BP-100905',reason:'Unknown business partner',fo:184,ev:1110,first:'2026-08-13',sug:'B07',conf:0.88},
+    {id:'SUS-0085',obj:'Freight order',key:'User SVC_EDI_BRIDGE (shared)',reason:'Shared service user',fo:77,ev:460,first:'2026-08-17',sug:'B13',conf:0.62},
+    {id:'SUS-0086',obj:'Tracking event',key:'Location LOC-CO-DEN-07',reason:'Location not mapped',fo:131,ev:820,first:'2026-08-20',sug:'B12',conf:0.94},
+    {id:'SUS-0087',obj:'Freight order',key:'Company code CC-2310 (new)',reason:'Unknown company code',fo:240,ev:1450,first:'2026-08-24',sug:'B13',conf:0.97},
+    {id:'SUS-0088',obj:'Freight order',key:'User MTRAN (moved bottler)',reason:'User in two bottler groups',fo:152,ev:910,first:'2026-08-27',sug:'B04',conf:0.71}
+  ].map(s=>({...s,assign:s.sug,saveRule:true}));
+  return {
+    persona:'admin', page:'overview', menu:null, drawer:null, visitedExec:false,
+    runs:[
+      {id:'RUN-24518',flow:'BN4L Freight Orders — delta',src:'BN4L OData API',start:'2026-09-01 02:00',dur:'00:04:12',rec:1812,status:'Success'},
+      {id:'RUN-24519',flow:'BN4L Freight Orders — month-end reconcile',src:'BN4L OData API',start:'2026-09-01 03:00',dur:'00:21:40',rec:151450,status:'Success'},
+      {id:'RUN-24520',flow:'BN4L Tenders — delta',src:'BN4L OData API',start:'2026-09-01 03:30',dur:'00:06:05',rec:9214,status:'Success'},
+      {id:'RUN-24521',flow:'BN4L Tracking Events — delta 2026-08-30',src:'BN4L Events API',start:'2026-08-31 01:15',dur:'00:11:48',rec:31022,status:'Success'},
+      {id:'RUN-24522',flow:'BN4L Tracking Events — delta 2026-08-31',src:'BN4L Events API',start:'2026-09-01 01:15',dur:'00:15:00',rec:0,status:'Failed',err:'HTTP 504 Gateway Timeout from BN4L Events API after 3 retries'},
+      {id:'RUN-24523',flow:'Cloud Identity — users and groups',src:'SAP Cloud Identity Services',start:'2026-09-01 04:00',dur:'00:01:31',rec:1641,status:'Success'},
+      {id:'RUN-24524',flow:'BTP cost import — August 2026',src:'BTP Resource Consumption API',start:'2026-09-02 06:00',dur:'00:00:22',rec:6,status:'Success'},
+      {id:'RUN-24525',flow:'Audit Log Retrieval — daily',src:'BTP Audit Log Retrieval API',start:'2026-09-01 05:00',dur:'00:02:10',rec:48210,status:'Success'}
+    ],
+    suspense,
+    resolved:[],
+    rules:[
+      {id:'MR-0101',type:'Business partner',value:'BP-100231',bottler:'B01',level:1,from:'2026-01-01',ver:1,by:'Priya Raman'},
+      {id:'MR-0102',type:'Business partner',value:'BP-100244',bottler:'B02',level:1,from:'2026-01-01',ver:1,by:'Priya Raman'},
+      {id:'MR-0114',type:'Company code',value:'CC-1700',bottler:'B07',level:1,from:'2026-01-01',ver:1,by:'Priya Raman'},
+      {id:'MR-0131',type:'IAS user group',value:'BN4L_B04_USERS',bottler:'B04',level:2,from:'2026-01-01',ver:2,by:'Priya Raman'},
+      {id:'MR-0137',type:'IAS user group',value:'BN4L_B10_USERS',bottler:'B10',level:2,from:'2026-02-01',ver:1,by:'Priya Raman'},
+      {id:'MR-0152',type:'Location',value:'LOC-TX-DAL-04',bottler:'B08',level:3,from:'2026-03-01',ver:1,by:'Priya Raman'},
+      {id:'MR-0158',type:'Location',value:'LOC-WA-SEA-01',bottler:'B03',level:3,from:'2026-04-15',ver:1,by:'Priya Raman'},
+      {id:'MR-0166',type:'Location',value:'LOC-NC-CLT-03',bottler:'B13',level:3,from:'2026-06-01',ver:1,by:'Priya Raman'}
+    ],
+    exclusions:[
+      {id:'EX-01',type:'Technical user',value:'TU_CPI_EXTRACT',reason:'Integration Suite extract user',vol:0,since:'2026-01-01'},
+      {id:'EX-02',type:'Technical user',value:'TU_BN4L_TEST_01',reason:'SAP regression test user',vol:412,since:'2026-01-01'},
+      {id:'EX-03',type:'User pattern',value:'SANDBOX_*',reason:'Training sandbox users',vol:1286,since:'2026-02-10'},
+      {id:'EX-04',type:'Business partner',value:'BP-999000',reason:'SAP demo carrier',vol:57,since:'2026-03-01'}
+    ],
+    rate:{metric:'fo',alpha:0.30,approved:false,version:4,draftFrom:'v3 (July 2026)',rounding:'Remainder to largest bottler',window:10,approvedBy:null,approvedAt:null},
+    locked:false, lockedAt:null, snapshot:null,
+    issued:false, issuedAt:null,
+    disputes:[
+      {id:'DSP-0138',bottler:'B04',period:'2026-07',line:'Variable usage charge',reason:'Duplicate records',desc:'EDI retry created 212 duplicate freight orders on 14 July.',claimed:1284.50,status:'Approved',credit:1284.50,raisedBy:'L. Moreno (B04)',raised:'2026-08-06',decidedBy:'Mark Ellison',decided:'2026-08-11',note:'Duplicates confirmed in ledger; credit applied to August statement.'},
+      {id:'DSP-0141',bottler:'B10',period:'2026-07',line:'Variable usage charge',reason:'Test or sandbox usage',desc:'Training users were counted in July.',claimed:640.00,status:'Rejected',credit:0,raisedBy:'R. Guidry (B10)',raised:'2026-08-08',decidedBy:'Mark Ellison',decided:'2026-08-12',note:'July charge uses freight orders, not users; sandbox users were already excluded (EX-03).'}
+    ],
+    carriedCredits:[{bottler:'B04',id:'DSP-0138',amt:1284.50}],
+    audit:[
+      {ts:'2026-09-01 01:30',actor:'System',persona:'system',cat:'Integration',action:'Extract failed',obj:'RUN-24522',detail:'HTTP 504 from BN4L Events API after 3 retries'},
+      {ts:'2026-09-01 03:22',actor:'System',persona:'system',cat:'Integration',action:'Extract completed',obj:'RUN-24519',detail:'151,450 records; month-end reconcile'},
+      {ts:'2026-09-02 06:00',actor:'System',persona:'system',cat:'Integration',action:'Cost imported',obj:'RUN-24524',detail:'6 cost lines, $168,650.00'},
+      {ts:'2026-09-03 09:12',actor:'Mark Ellison',persona:'fin',cat:'Rate card',action:'Draft created',obj:'Rate card v4',detail:'Copied from v3; metric Freight orders, fixed share 30%'},
+      {ts:'2026-08-12 10:05',actor:'Mark Ellison',persona:'fin',cat:'Disputes',action:'Dispute rejected',obj:'DSP-0141',detail:'Metric is freight orders; sandbox users already excluded'},
+      {ts:'2026-08-11 16:40',actor:'Mark Ellison',persona:'fin',cat:'Disputes',action:'Dispute approved',obj:'DSP-0138',detail:'Credit $1,284.50 carried to August'}
+    ],
+    notes:[
+      {to:'admin',ts:'2026-09-01 01:30',text:'Extract RUN-24522 failed: BN4L Tracking Events delta for 31 Aug.',read:false},
+      {to:'admin',ts:'2026-09-02 07:00',text:'8 suspense items hold 0.9% of August freight orders (threshold 0.5%).',read:false},
+      {to:'fin',ts:'2026-09-02 06:05',text:'August cost imported: $168,650.00 across 6 lines.',read:false},
+      {to:'fin',ts:'2026-09-03 09:12',text:'Rate card v4 is in draft and needs approval.',read:false},
+      {to:'bot',ts:'2026-08-12 10:10',text:'July statement closed. No open disputes for B01.',read:true},
+      {to:'exec',ts:'2026-09-02 08:00',text:'August close is in progress. Due 30 Sep 2026.',read:false},
+      {to:'aud',ts:'2026-09-01 00:00',text:'Q3 audit sampling window is open for Jun–Aug 2026.',read:true}
+    ],
+    filters:{auditCat:'All', allocSort:'total', stmtBottler:'B01', repBottler:'B01'},
+    form:{}
+  };
+}
+let S = freshState();
+
+/* ---------- domain logic ---------- */
+function eventsMissingFactor(){ return S.runs.some(r=>r.status==='Failed' && r.flow.includes('Tracking')) ? 0.968 : 1; }
+function volumes(){
+  // attributed volume per bottler for the period, plus suspense
+  const f = eventsMissingFactor();
+  const v = Object.fromEntries(BOTTLERS.map(b=>[b.id,{fo:b.fo,users:b.users,ev:Math.round(b.ev*f),te:b.te}]));
+  S.resolved.forEach(s=>{ v[s.assign].fo += s.fo; v[s.assign].ev += Math.round(s.ev*f); v[s.assign].te += s.obj==='Tender'?s.fo:0; });
+  const sus = S.suspense.reduce((a,s)=>({fo:a.fo+s.fo,ev:a.ev+s.ev}),{fo:0,ev:0});
+  return {v,sus};
+}
+function totalCost(){ return COST_LINES.reduce((a,c)=>a+c.amt,0); }
+function allocate(metric=S.rate.metric, alpha=S.rate.alpha){
+  const C = totalCost(), N = BOTTLERS.length, {v,sus} = volumes();
+  const U = BOTTLERS.reduce((a,b)=>a+v[b.id][metric],0);
+  const fixedEach = C*alpha/N, varPool = C*(1-alpha), ratePer = varPool/U;
+  let rows = BOTTLERS.map(b=>{
+    const u = v[b.id][metric], fixed = r2(fixedEach), variable = r2(varPool*u/U);
+    const credit = S.carriedCredits.filter(c=>c.bottler===b.id).reduce((a,c)=>a+c.amt,0);
+    return {id:b.id,name:b.name,region:b.region,usage:u,share:u/U,fixed,variable,total:r2(fixed+variable),credit,fo:v[b.id].fo,users:v[b.id].users,ev:v[b.id].ev,te:v[b.id].te};
+  });
+  const sum = r2(rows.reduce((a,r)=>a+r.total,0)); const rounding = r2(C - sum);
+  if (rounding !== 0){ const big = rows.reduce((m,r)=>r.total>m.total?r:m,rows[0]); big.variable = r2(big.variable+rounding); big.total = r2(big.total+rounding); big.roundAdj = rounding; }
+  const prev = histCharges('2026-07');
+  rows.forEach(r=>{ r.prev = prev[r.id]; r.delta = r.total - prev[r.id]; r.net = r2(r.total - r.credit); });
+  return {rows,C,U,ratePer,fixedEach:r2(fixedEach),varPool,rounding,sus,allocated:r2(rows.reduce((a,r)=>a+r.total,0)),metric,alpha};
+}
+function histCharges(pid){
+  const h = HIST.find(x=>x[0]===pid); const C = h[2]; const idx = HIST.indexOf(h);
+  const tot = BOTTLERS.reduce((a,b)=>a+b.fo,0);
+  const out = {}; let acc = 0;
+  BOTTLERS.forEach((b,i)=>{ seed = 97 + idx*31 + i*13; const w = b.fo/tot*(0.94+rnd()*0.12); out[b.id]=w; acc+=w; });
+  BOTTLERS.forEach(b=>{ out[b.id] = r2(C*(0.3/13) + C*0.7*out[b.id]/acc); });
+  return out;
+}
+function attributionRate(){ const {v,sus}=volumes(); const at = BOTTLERS.reduce((a,b)=>a+v[b.id].fo,0); return at/(at+sus.fo); }
+function checklist(){
+  const failed = S.runs.filter(r=>r.status==='Failed').length;
+  const a = allocate(); const sp = a.sus.fo/(a.U + a.sus.fo);
+  return [
+    {k:'extracts',t:'All period extracts complete',ok:failed===0,d:failed?failed+' failed run needs a re-run (Platform admin)':'8 of 8 runs succeeded for August'},
+    {k:'suspense',t:'Suspense reviewed and below 0.5%',ok:S.suspense.length===0,d:S.suspense.length?S.suspense.length+' items, '+int(a.sus.fo)+' freight orders ('+pct(sp,2)+') unattributed':'All August records attributed to a bottler'},
+    {k:'rate',t:'Rate card approved',ok:S.rate.approved,d:S.rate.approved?'v'+S.rate.version+' approved by '+S.rate.approvedBy+' on '+S.rate.approvedAt:'Rate card v'+S.rate.version+' is still a draft'},
+    {k:'recon',t:'Allocation reconciles to invoice',ok:Math.abs(a.allocated-a.C)<0.005,d:usd(a.allocated)+' allocated vs '+usd(a.C)+' invoiced · rounding '+usd(a.rounding)},
+    {k:'lock',t:'Period locked and snapshot taken',ok:S.locked,d:S.locked?'Locked '+S.lockedAt+' · '+S.snapshot.id:'Lock freezes volumes, rates and results'},
+    {k:'issue',t:'Statements issued to 13 bottlers',ok:S.issued,d:S.issued?'Issued '+S.issuedAt+' · dispute window '+S.rate.window+' business days':'Statements go to each bottler’s finance contact'}
+  ];
+}
+const FLOW = [
+  {p:'admin',page:'runs',t:'Re-run failed extract',done:()=>!S.runs.some(r=>r.status==='Failed')},
+  {p:'admin',page:'suspense',t:'Clear the suspense queue',done:()=>S.suspense.length===0},
+  {p:'fin',page:'rate',t:'Approve rate card',done:()=>S.rate.approved},
+  {p:'fin',page:'close',t:'Reconcile and lock period',done:()=>S.locked},
+  {p:'fin',page:'close',t:'Issue statements',done:()=>S.issued},
+  {p:'bot',page:'statements',t:'Review statement, raise dispute',done:()=>S.disputes.some(d=>d.bottler==='B01'&&d.period==='2026-08')},
+  {p:'fin',page:'disputes',t:'Decide the dispute',done:()=>S.disputes.some(d=>d.bottler==='B01'&&d.period==='2026-08'&&d.status!=='Submitted')},
+  {p:'exec',page:'dash',t:'Review outcome',done:()=>S.visitedExec && S.disputes.some(d=>d.bottler==='B01'&&d.period==='2026-08'&&d.status!=='Submitted')}
+];
+function log(cat,action,obj,detail,persona=S.persona){ S.audit.unshift({ts:NOW(),actor:PERSONAS[persona]?.name||'System',persona,cat,action,obj,detail}); }
+function notify(to,text){ S.notes.unshift({to,ts:NOW(),text,read:false}); }
+
+/* ---------- toast & tooltip ---------- */
+let toastT;
+function toast(msg){ let t = $('.toast'); if(!t){ t=document.createElement('div'); t.className='toast'; t.setAttribute('role','status'); document.body.appendChild(t);} t.textContent=msg; t.hidden=false; clearTimeout(toastT); toastT=setTimeout(()=>{t.hidden=true},3400); }
+const tip = $('#tip');
+document.addEventListener('mousemove', e=>{
+  const el = e.target.closest('[data-tip]');
+  if(!el){ tip.hidden=true; return; }
+  tip.innerHTML = el.getAttribute('data-tip'); tip.hidden=false;
+  const w = tip.offsetWidth, h = tip.offsetHeight;
+  let x = e.clientX + 14, y = e.clientY + 14;
+  if (x + w > innerWidth - 8) x = e.clientX - w - 14;
+  if (y + h > innerHeight - 8) y = e.clientY - h - 14;
+  tip.style.left = x+'px'; tip.style.top = y+'px';
+});
+
+/* ---------- charts (inline SVG) ---------- */
+function stackedBars(rows){
+  const W=1000, rowH=28, top=8, left=240, right=96, H=top+rows.length*rowH+26;
+  const max = Math.max(...rows.map(r=>r.fixed+r.variable)); const nice = Math.ceil(max/5000)*5000; const sx = v => (W-left-right)*v/nice;
+  let g = '';
+  for(let t=0;t<=nice;t+=nice/5){ const x=left+sx(t); g+=`<line x1="${x}" x2="${x}" y1="${top}" y2="${H-22}" stroke="var(--grid)"/><text x="${x}" y="${H-6}" font-size="10.5" text-anchor="middle" fill="var(--muted)">${t===0?'$0':'$'+(t/1000)+'k'}</text>`; }
+  rows.forEach((r,i)=>{
+    const y = top + i*rowH + 5, h = rowH-10, wf = sx(r.fixed), wv = sx(r.variable);
+    const tipTxt = `<b>${esc(r.name)}</b><br>Fixed share ${usd(r.fixed)}<br>Variable ${usd(r.variable)}<br>Total ${usd(r.total)}`;
+    g += `<text x="${left-8}" y="${y+h/2+4}" font-size="11.5" text-anchor="end" fill="var(--ink)">${esc(r.id)} · ${esc(r.name.length>28?r.name.slice(0,27)+'…':r.name)}</text>`;
+    g += `<g data-tip="${esc(tipTxt)}"><rect x="${left-2}" y="${y-4}" width="${W-left-right+4}" height="${h+8}" fill="transparent"/>`;
+    g += `<rect x="${left}" y="${y}" width="${Math.max(wf-1,0)}" height="${h}" rx="3" fill="var(--s1)"/>`;
+    g += `<rect x="${left+wf+1}" y="${y}" width="${Math.max(wv-1,0)}" height="${h}" rx="3" fill="var(--s2)"/></g>`;
+    g += `<text x="${left+wf+wv+6}" y="${y+h/2+4}" font-size="11" fill="var(--muted)" class="num">${usd0(r.total)}</text>`;
+  });
+  return `<div class="chart-wrap"><svg viewBox="0 0 ${W} ${H}" width="100%" style="min-width:640px" role="img" aria-label="Charge by bottler, fixed and variable">${g}</svg></div>
+  <div class="legend" style="margin-top:6px"><span><i style="background:var(--s1)"></i>Fixed platform share</span><span><i style="background:var(--s2)"></i>Variable usage charge</span></div>`;
+}
+function lineChart(pts, label){
+  const W=720,H=230,l=58,r=24,t=16,b=30;
+  const vals = pts.map(p=>p.v); const lo = Math.floor(Math.min(...vals)*0.985/1000)*1000, hi = Math.ceil(Math.max(...vals)*1.01/1000)*1000;
+  const sx = i => l + (W-l-r)*i/(pts.length-1), sy = v => t + (H-t-b)*(1-(v-lo)/(hi-lo));
+  let g=''; const steps=4;
+  for(let k=0;k<=steps;k++){ const v=lo+(hi-lo)*k/steps, y=sy(v); g+=`<line x1="${l}" x2="${W-r}" y1="${y}" y2="${y}" stroke="var(--grid)"/><text x="${l-8}" y="${y+4}" font-size="10.5" text-anchor="end" fill="var(--muted)">$${(v/1000).toFixed(1)}k</text>`; }
+  const d = pts.map((p,i)=>(i?'L':'M')+sx(i)+' '+sy(p.v)).join(' ');
+  g += `<path d="${d} L${sx(pts.length-1)} ${H-b} L${sx(0)} ${H-b} Z" fill="var(--s1)" opacity=".10"/>`;
+  g += `<path d="${d}" fill="none" stroke="var(--s1)" stroke-width="2" stroke-linejoin="round"/>`;
+  pts.forEach((p,i)=>{ const last=i===pts.length-1; g+=`<text x="${sx(i)}" y="${H-10}" font-size="10.5" text-anchor="middle" fill="var(--muted)">${esc(p.l)}</text>`;
+    g+=`<g data-tip="<b>${esc(p.l)}</b><br>${esc(label)} ${usd(p.v)}${p.note?'<br>'+esc(p.note):''}"><rect x="${sx(i)-40}" y="${t}" width="80" height="${H-t-b}" fill="transparent"/><circle cx="${sx(i)}" cy="${sy(p.v)}" r="${last?5.5:4}" fill="${last?'var(--s1)':'var(--surface)'}" stroke="var(--s1)" stroke-width="2"/></g>`;
+    if(last) g+=`<text x="${sx(i)-8}" y="${sy(p.v)-12}" font-size="11.5" font-weight="600" text-anchor="end" fill="var(--ink)">${usd0(p.v)}</text>`; });
+  return `<div class="chart-wrap"><svg viewBox="0 0 ${W} ${H}" width="100%" style="min-width:480px" role="img" aria-label="${esc(label)} trend">${g}</svg></div>`;
+}
+function dailyBars(days){
+  const W=720,H=200,l=44,r=12,t=12,b=28; const max = Math.ceil(Math.max(...days.map(d=>d.v))/100)*100; const bw=(W-l-r)/days.length;
+  let g=''; for(let k=0;k<=4;k++){ const v=max*k/4, y=t+(H-t-b)*(1-k/4); g+=`<line x1="${l}" x2="${W-r}" y1="${y}" y2="${y}" stroke="var(--grid)"/><text x="${l-6}" y="${y+4}" font-size="10.5" text-anchor="end" fill="var(--muted)">${int(v)}</text>`; }
+  days.forEach((d,i)=>{ const h=(H-t-b)*d.v/max, x=l+i*bw+2, y=H-b-h; g+=`<g data-tip="<b>${esc(d.l)}</b><br>${int(d.v)} freight orders${d.we?'<br>Weekend':''}"><rect x="${l+i*bw}" y="${t}" width="${bw}" height="${H-t-b}" fill="transparent"/><path d="M${x} ${H-b} V${y+3} q0 -3 3 -3 H${x+bw-7} q3 0 3 3 V${H-b}Z" fill="var(--s1)" opacity="${d.we?.45:1}"/></g>`; if(i%3===0) g+=`<text x="${x+(bw-4)/2}" y="${H-10}" font-size="10.5" text-anchor="middle" fill="var(--muted)">${d.d}</text>`; });
+  return `<div class="chart-wrap"><svg viewBox="0 0 ${W} ${H}" width="100%" style="min-width:480px" role="img" aria-label="Daily freight orders">${g}</svg></div>`;
+}
+
+/* ---------- shared UI bits ---------- */
+const chip = (s) => { const m={Success:'good',Approved:'good',Issued:'good',Locked:'good',Resolved:'good',Paid:'good',Active:'good',Failed:'crit',Rejected:'crit',Running:'info',Submitted:'warn','Under review':'warn',Draft:'warn',Open:'warn','In progress':'info',Scheduled:'mute',Pending:'mute'}; return `<span class="chip ${m[s]||'mute'}">${esc(s)}</span>`; };
+const btnDl = (rep, fmt, extra='') => `<button class="btn sm" data-act="dl" data-rep="${rep}" data-fmt="${fmt}" ${extra}>${fmt==='xlsx'?ICON.xls+'Excel':ICON.pdf+'PDF'}</button>`;
+function roleStrip(p){ const P=PERSONAS[p]; return `<div class="role-strip"><div><span class="eyebrow">Goals</span><ul>${P.goals.map(g=>`<li>${esc(g)}</li>`).join('')}</ul></div><div><span class="eyebrow">What you do here</span><ul>${P.tasks.map(g=>`<li>${esc(g)}</li>`).join('')}</ul></div><div><span class="eyebrow">Access</span><ul><li>Role collection: <span class="mono">${esc(P.role)}</span></li><li>${esc(P.scope)}</li><li>KPIs: ${esc(P.kpis.join(', '))}</li></ul></div></div>`; }
+function kpi(l,v,d,tone){ return `<div class="card kpi"><span class="l">${esc(l)}</span><span class="v">${v}</span>${d?`<span class="d" ${tone?`style="color:var(--${tone})"`:''}>${d}</span>`:''}</div>`; }
+function head(title, sub, actions=''){ return `<div class="page-head"><div><h1>${esc(title)}</h1>${sub?`<p>${sub}</p>`:''}</div><div class="row">${actions}</div></div>`; }
+function periodStatus(){ return S.issued?'Issued':S.locked?'Locked':'Open'; }
+
+/* ---------- pages: Platform admin ---------- */
+function pAdminOverview(){
+  const failed = S.runs.filter(r=>r.status==='Failed'); const ar = attributionRate(); const a = allocate();
+  return head('Good morning, Priya','August 2026 close: data readiness for chargeback. Close due 30 Sep 2026.', `<span class="sample-note">Sample data</span>`) + `<div class="stack">
+  ${roleStrip('admin')}
+  <div class="grid g4">
+    ${kpi('Extract success (Aug close)', (S.runs.length-failed.length)+' / '+S.runs.length, failed.length?failed.length+' failed — action needed':'All runs succeeded', failed.length?'crit':'good')}
+    ${kpi('Attribution hit rate', pct(ar,2), ar>=0.995?'Above 99.5% target':'Target 99.5%', ar>=0.995?'good':'warn')}
+    ${kpi('Suspense volume', int(a.sus.fo)+' orders', S.suspense.length+' open items', S.suspense.length?'warn':'good')}
+    ${kpi('Active mapping rules', S.rules.length, 'Across 4 key types')}
+  </div>
+  <div class="grid g2">
+    <div class="card"><div class="card-h"><div><h2>Needs attention</h2><p>Items blocking the August close</p></div></div><div class="card-b stack">
+      ${failed.length?`<div class="banner warn"><div><b>${esc(failed[0].flow)}</b> failed at ${esc(failed[0].start)}.<br><span class="small">${esc(failed[0].err)}</span></div><button class="btn sm primary" data-act="go" data-page="runs">Open runs</button></div>`:''}
+      ${S.suspense.length?`<div class="banner warn"><div><b>${S.suspense.length} suspense items</b> hold ${int(a.sus.fo)} freight orders with no bottler.</div><button class="btn sm primary" data-act="go" data-page="suspense">Work queue</button></div>`:''}
+      ${!failed.length && !S.suspense.length?`<div class="banner good"><div><b>Data is ready for finance.</b> All extracts complete and every record is attributed.</div></div>`:''}
+    </div></div>
+    <div class="card"><div class="card-h"><div><h2>Attribution by key level</h2><p>Share of August freight orders resolved at each level</p></div></div><div class="card-b">
+      ${[['1 · Business partner / company code',0.842],['2 · Owning user (IAS group)',0.119],['3 · Location or plant',0.018],['4 · Suspense',a.sus.fo/(a.U+a.sus.fo)]].map(([k,v])=>`<div class="row" style="margin-bottom:10px;flex-wrap:nowrap"><span class="small" style="width:210px;flex:none">${k}</span><div class="bar-track" style="flex:1"><i style="width:${Math.max(v*100,0.5)}%;${k.startsWith('4')?'background:var(--s2)':''}"></i></div><span class="num small" style="width:56px;text-align:right">${pct(v,1)}</span></div>`).join('')}
+      <p class="hint">Levels 1–3 resolve automatically; level 4 needs a person.</p>
+    </div></div>
+  </div></div>`;
+}
+function pRuns(){
+  return head('Integration runs','Scheduled SAP Integration Suite iFlows that feed the usage ledger. Re-runs are idempotent: a record is loaded once.', btnDl('runs','xlsx')+btnDl('runs','pdf')) + `<div class="card"><div class="tw"><table><thead><tr><th>Run</th><th>iFlow</th><th>Source</th><th>Started</th><th>Duration</th><th class="r">Records</th><th>Status</th><th></th></tr></thead><tbody>
+  ${S.runs.map(r=>`<tr class="${r.status==='Failed'?'hl':''}"><td class="mono">${r.id}</td><td>${esc(r.flow)}${r.err?`<div class="hint" style="color:var(--crit)">${esc(r.err)}</div>`:''}</td><td class="small muted">${esc(r.src)}</td><td class="num small">${r.start}</td><td class="num small">${r.dur}</td><td class="r">${int(r.rec)}</td><td>${chip(r.status)}</td><td>${r.status==='Failed'?`<button class="btn sm primary" data-act="rerun" data-id="${r.id}">${ICON.play}Re-run</button>`:r.status==='Running'?'<span class="hint">Running…</span>':''}</td></tr>`).join('')}
+  </tbody></table></div></div>
+  <p class="hint" style="margin-top:10px">Next scheduled: BN4L Freight Orders — delta at 02:00 daily. Alerts go to SAP Alert Notification (email + Teams).</p>`;
+}
+function pSuspense(){
+  const a = allocate(); const opts = id => BOTTLERS.map(b=>`<option value="${b.id}" ${b.id===id?'selected':''}>${b.id} · ${esc(b.name)}</option>`).join('');
+  return head('Suspense queue','Records no attribution rule could place. Assign each to a bottler; saving it as a mapping rule stops it from recurring.', btnDl('suspense','xlsx')+btnDl('suspense','pdf')) + `<div class="stack">
+  <div class="grid g3">${kpi('Open items',S.suspense.length)}${kpi('Unattributed freight orders',int(a.sus.fo),pct(a.sus.fo/(a.U+a.sus.fo),2)+' of August volume')}${kpi('Resolved this period',S.resolved.length, S.resolved.length?S.resolved.filter(r=>r.saveRule).length+' saved as rules':'')}</div>
+  ${S.suspense.length?`<div class="card"><div class="card-h"><div><h2>Open items</h2><p>Suggestions come from partner name, user history and location matches</p></div><div class="row"><button class="btn" data-act="accept-high">Accept suggestions ≥ 90%</button><button class="btn primary" data-act="resolve-all">Assign all as shown</button></div></div><div class="tw"><table><thead><tr><th>Item</th><th>Object</th><th>Unmatched key</th><th>Reason</th><th class="r">Freight orders</th><th>First seen</th><th>Assign to</th><th>Rule</th><th></th></tr></thead><tbody>
+  ${S.suspense.map(s=>`<tr><td class="mono">${s.id}</td><td class="small">${esc(s.obj)}</td><td class="small">${esc(s.key)}</td><td class="small muted">${esc(s.reason)}</td><td class="r">${int(s.fo)}</td><td class="num small">${s.first}</td><td><select class="inline" data-act="sus-assign" data-id="${s.id}" aria-label="Assign ${s.id}">${opts(s.assign)}</select><div class="hint">Suggested ${s.sug} · ${Math.round(s.conf*100)}% match</div></td><td><label class="small row" style="gap:6px;flex-wrap:nowrap"><input type="checkbox" data-act="sus-rule" data-id="${s.id}" ${s.saveRule?'checked':''}>Save rule</label></td><td><button class="btn sm primary" data-act="resolve" data-id="${s.id}">Assign</button></td></tr>`).join('')}
+  </tbody></table></div></div>`:`<div class="banner good"><div><b>Queue is clear.</b> Every August record is attributed. Finance can approve the rate card and close.</div><button class="btn sm primary" data-act="persona" data-p="fin" data-page="rate">Hand over to finance ${ICON.arrow}</button></div>`}
+  ${S.resolved.length?`<div class="card"><div class="card-h"><h2>Resolved this period</h2></div><div class="tw"><table><thead><tr><th>Item</th><th>Key</th><th>Assigned to</th><th class="r">Freight orders</th><th>Rule</th><th>By</th></tr></thead><tbody>${S.resolved.map(s=>`<tr><td class="mono">${s.id}</td><td class="small">${esc(s.key)}</td><td>${s.assign} · ${esc(BMAP[s.assign].name)}</td><td class="r">${int(s.fo)}</td><td>${s.rule?`<span class="mono">${s.rule}</span>`:'<span class="hint">One-off</span>'}</td><td class="small">${esc(s.by)} · ${s.at}</td></tr>`).join('')}</tbody></table></div></div>`:''}
+  </div>`;
+}
+function pMaster(){
+  const f = S.form;
+  return head('Bottlers & mapping','The bottler master and the rules that turn source keys into a Bottler ID. Rules are versioned and effective-dated.') + `<div class="stack">
+  <div class="card"><div class="card-h"><div><h2>Bottler master</h2><p>13 bottlers on the shared BN4L tenant</p></div></div><div class="tw"><table><thead><tr><th>ID</th><th>Bottler</th><th>Region</th><th>Business partner</th><th>Company code</th><th>IAS group</th><th class="r">Locations</th><th class="r">Named users</th><th>Status</th></tr></thead><tbody>
+  ${BOTTLERS.map(b=>`<tr><td class="mono">${b.id}</td><td>${esc(b.name)}</td><td class="small muted">${esc(b.region)}</td><td class="mono">${b.bp}</td><td class="mono">${b.cc}</td><td class="mono">${b.iasGroup}</td><td class="r">${b.locations}</td><td class="r">${b.users}</td><td>${chip(b.status)}</td></tr>`).join('')}</tbody></table></div></div>
+  <div class="grid g-main">
+  <div class="card"><div class="card-h"><div><h2>Mapping rules</h2><p>Evaluated in level order: 1 document partner, 2 owning user, 3 location</p></div></div><div class="tw"><table><thead><tr><th>Rule</th><th>Key type</th><th>Value</th><th>Bottler</th><th class="r">Level</th><th>Effective</th><th class="r">Ver.</th><th>By</th></tr></thead><tbody>
+  ${S.rules.map(r=>`<tr><td class="mono">${r.id}</td><td class="small">${r.type}</td><td class="mono">${esc(r.value)}</td><td>${r.bottler}</td><td class="r">${r.level}</td><td class="num small">${r.from}</td><td class="r">${r.ver}</td><td class="small muted">${esc(r.by)}</td></tr>`).join('')}</tbody></table></div></div>
+  <div class="card"><div class="card-h"><h2>Add mapping rule</h2></div><form class="card-b stack" id="ruleForm">
+    <div class="field"><label for="rtype">Key type</label><select id="rtype"><option>Business partner</option><option>Company code</option><option>IAS user group</option><option>Location</option></select></div>
+    <div class="field"><label for="rval">Key value</label><input id="rval" placeholder="e.g. BP-100912" required value="${esc(f.rval||'')}"></div>
+    <div class="field"><label for="rbot">Bottler</label><select id="rbot">${BOTTLERS.map(b=>`<option value="${b.id}">${b.id} · ${esc(b.name)}</option>`).join('')}</select></div>
+    <div class="field"><label for="rfrom">Effective from</label><input id="rfrom" type="date" value="2026-08-01"></div>
+    <p class="hint">Rules effective inside a locked period apply from the next open period.</p>
+    <div><button class="btn primary" type="submit">Save rule</button></div>
+  </form></div></div></div>`;
+}
+function pExclusions(){
+  return head('Exclusions','Traffic that never counts toward any bottler: technical users, test partners and sandboxes.') + `<div class="card"><div class="tw"><table><thead><tr><th>ID</th><th>Type</th><th>Value</th><th>Reason</th><th class="r">Excluded in Aug (orders)</th><th>Since</th></tr></thead><tbody>${S.exclusions.map(e=>`<tr><td class="mono">${e.id}</td><td class="small">${e.type}</td><td class="mono">${esc(e.value)}</td><td class="small">${esc(e.reason)}</td><td class="r">${int(e.vol)}</td><td class="num small">${e.since}</td></tr>`).join('')}</tbody><tfoot><tr><td colspan="4">Total excluded</td><td class="r">${int(S.exclusions.reduce((a,e)=>a+e.vol,0))}</td><td></td></tr></tfoot></table></div></div>`;
+}
+
+/* ---------- pages: Finance ---------- */
+function pClose(){
+  const c = checklist(); const a = allocate(); const canLock = c.slice(0,4).every(x=>x.ok) && !S.locked; const canIssue = S.locked && !S.issued;
+  const done = c.filter(x=>x.ok).length;
+  return head('Period close · August 2026','Work top to bottom. Each step unlocks the next; every action is written to the audit trail.', `${chip(periodStatus())}<span class="sample-note">Due 30 Sep 2026</span>`) + `<div class="stack">
+  ${roleStrip('fin')}
+  <div class="grid g4">${kpi('Invoiced cost (C)',usd(a.C),'6 lines from SAP invoice and BTP')}${kpi('Allocated',usd(a.allocated),Math.abs(a.allocated-a.C)<0.005?'Reconciled to the cent':'Difference '+usd(a.C-a.allocated),Math.abs(a.allocated-a.C)<0.005?'good':'crit')}${kpi('Checklist',done+' / 6','steps complete')}${kpi('Open disputes',S.disputes.filter(d=>d.status==='Submitted').length, S.issued?'Window closes 2026-10-10':'Opens when statements issue')}</div>
+  <div class="grid g-main">
+  <div class="card"><div class="card-h"><div><h2>Close checklist</h2><p>Steps 1–2 are owned by the platform admin</p></div></div><div class="card-b" style="padding-block:4px">
+    ${c.map((x,i)=>`<div class="check"><span class="ic ${x.ok?'ok':(i<2?'bad':'no')}">${x.ok?'✓':i+1}</span><div class="body"><b>${esc(x.t)}</b><p>${esc(x.d)}</p></div>
+    ${x.k==='rate'&&!x.ok?`<button class="btn sm" data-act="go" data-page="rate">Review</button>`:''}
+    ${(x.k==='extracts'||x.k==='suspense')&&!x.ok?`<button class="btn sm" data-act="persona" data-p="admin" data-page="${x.k==='extracts'?'runs':'suspense'}">Ask admin</button>`:''}
+    ${x.k==='lock'&&!x.ok?`<button class="btn sm primary" data-act="lock" ${canLock?'':'disabled'} title="${canLock?'Lock period':'Complete steps 1–4 first'}">Lock period</button>`:''}
+    ${x.k==='issue'&&!x.ok?`<button class="btn sm primary" data-act="issue" ${canIssue?'':'disabled'}>Issue statements</button>`:''}
+    </div>`).join('')}
+  </div></div>
+  <div class="card"><div class="card-h"><h2>Close outputs</h2></div><div class="card-b stack">
+    <p class="small muted">Download the pack for the controller and the bottler council.</p>
+    <div class="row"><span class="small" style="flex:1">Chargeback summary</span>${btnDl('summary','xlsx')}${btnDl('summary','pdf')}</div>
+    <div class="row"><span class="small" style="flex:1">Reconciliation</span>${btnDl('recon','xlsx')}${btnDl('recon','pdf')}</div>
+    <div class="row"><span class="small" style="flex:1">All 13 statements</span>${btnDl('allstatements','xlsx')}${btnDl('allstatements','pdf')}</div>
+    ${S.locked?`<div class="banner info"><div><b>Snapshot ${S.snapshot.id}</b><br><span class="small">Checksum <span class="mono">${S.snapshot.hash}</span> · ${S.snapshot.rows} ledger rows frozen</span></div></div>`:''}
+  </div></div></div></div>`;
+}
+function pAllocation(){
+  const a = allocate(); const m = METRICS[a.metric]; const sort = S.filters.allocSort;
+  const rows = [...a.rows].sort((x,y)=>sort==='name'?x.id.localeCompare(y.id):y[sort]-x[sort]);
+  return head('Allocation · August 2026',`${esc(m.label)} · fixed share ${pct(a.alpha,0)} · rate card v${S.rate.version} ${S.rate.approved?'(approved)':'(draft)'}${S.locked?' · locked':''}`, btnDl('summary','xlsx')+btnDl('summary','pdf')) + `<div class="stack">
+  <div class="grid g4">${kpi('Fixed share per bottler',usd(a.fixedEach),'C × α ÷ 13')}${kpi('Variable rate',usd(a.ratePer,4),'per '+m.unit.replace(/s$/,''))}${kpi(m.short+' attributed',int(a.U), a.sus.fo? int(a.sus.fo)+' orders still in suspense':'100% attributed', a.sus.fo?'warn':'good')}${kpi('Rounding to largest',usd(a.rounding),'Keeps the total exact')}</div>
+  <div class="card"><div class="card-h"><div><h2>Charge by bottler</h2><p>Hover a bar for the split</p></div></div><div class="card-b">${stackedBars(rows)}</div></div>
+  <div class="card"><div class="card-h"><h2>Allocation detail</h2><div class="seg" role="group" aria-label="Sort">${[['total','By charge'],['delta','By change'],['name','By ID']].map(([k,l])=>`<button class="${sort===k?'on':''}" data-act="sort" data-k="${k}">${l}</button>`).join('')}</div></div><div class="tw"><table><thead><tr><th>Bottler</th><th class="r">${esc(m.short)}</th><th class="r">Share</th><th class="r">Fixed</th><th class="r">Variable</th><th class="r">Total</th><th class="r">July</th><th class="r">Change</th><th class="r">Credits</th><th class="r">Net due</th></tr></thead><tbody>
+  ${rows.map(r=>`<tr><td><b style="font-weight:500">${r.id}</b> · ${esc(r.name)}${r.roundAdj?` <span class="hint">(+${usd(r.roundAdj)} rounding)</span>`:''}</td><td class="r">${int(r.usage)}</td><td class="r">${pct(r.share,2)}</td><td class="r">${usd(r.fixed)}</td><td class="r">${usd(r.variable)}</td><td class="r"><b style="font-weight:600">${usd(r.total)}</b></td><td class="r muted">${usd(r.prev)}</td><td class="r" style="color:${r.delta>0?'var(--warn)':'var(--good)'}">${r.delta>0?'+':''}${usd(r.delta)}</td><td class="r">${r.credit?'-'+usd(r.credit):'—'}</td><td class="r">${usd(r.net)}</td></tr>`).join('')}
+  </tbody><tfoot><tr><td>Total · 13 bottlers</td><td class="r">${int(a.U)}</td><td class="r">100.00%</td><td class="r">${usd(a.rows.reduce((s,r)=>s+r.fixed,0))}</td><td class="r">${usd(a.rows.reduce((s,r)=>s+r.variable,0))}</td><td class="r">${usd(a.allocated)}</td><td class="r">${usd(HIST[4][2])}</td><td class="r">${usd(a.allocated-HIST[4][2])}</td><td class="r">-${usd(a.rows.reduce((s,r)=>s+r.credit,0))}</td><td class="r">${usd(a.rows.reduce((s,r)=>s+r.net,0))}</td></tr></tfoot></table></div></div></div>`;
+}
+function pRate(){
+  const R = S.rate; const a = allocate(); const lockedNote = S.locked;
+  const sim = Object.keys(METRICS).map(k=>{ const x = allocate(k, R.alpha); const mm = x.rows.reduce((m,r)=>({min:Math.min(m.min,r.total),max:Math.max(m.max,r.total)}),{min:1e12,max:0}); return {k,...mm,b01:x.rows[0].total}; });
+  return head('Rate card & policy',`Version ${R.version} · ${R.approved?'approved by '+esc(R.approvedBy)+' on '+R.approvedAt:'draft from '+R.draftFrom}`, chip(R.approved?'Approved':'Draft')) + `<div class="grid g-main">
+  <div class="stack">
+  <div class="card"><div class="card-h"><div><h2>Chargeback formula</h2><p>Chargeᵦ = α × C ÷ N + (1 − α) × C × Uᵦ ÷ ΣU</p></div></div><div class="card-b stack">
+    <div class="field"><label>Usage metric (U)</label><div class="seg" role="group" aria-label="Metric">${Object.values(METRICS).map(m=>`<button class="${R.metric===m.key?'on':''}" data-act="metric" data-k="${m.key}" ${lockedNote?'disabled':''}>${esc(m.short)}</button>`).join('')}</div></div>
+    <div class="field"><label for="alpha">Fixed share α: <b class="num" style="color:var(--ink)">${Math.round(R.alpha*100)}%</b> of cost split equally</label><input type="range" id="alpha" min="0" max="60" step="5" value="${Math.round(R.alpha*100)}" data-act="alpha" ${lockedNote?'disabled':''}><div class="row hint" style="justify-content:space-between"><span>0% · pure usage</span><span>60% · mostly equal split</span></div></div>
+    <div class="grid g3">
+      <div class="field"><label>Total cost C</label><div class="num">${usd(a.C)}</div></div>
+      <div class="field"><label>Bottlers N</label><div class="num">13</div></div>
+      <div class="field"><label>Rounding</label><div class="small">${esc(R.rounding)}</div></div>
+      <div class="field"><label>Dispute window</label><div class="small">${R.window} business days</div></div>
+      <div class="field"><label>Closed periods</label><div class="small">Adjusted next period, never recalculated</div></div>
+      <div class="field"><label>Excluded traffic</label><div class="small">${S.exclusions.length} exclusion entries</div></div>
+    </div>
+    <div class="row">${R.approved?`<span class="chip good">Approved</span><span class="hint">Changing the metric or α reopens the draft.</span>`:`<button class="btn primary" data-act="approve-rate" ${lockedNote?'disabled':''}>Approve rate card v${R.version}</button><span class="hint">Approval is logged with your name and time.</span>`}</div>
+    ${lockedNote?'<div class="banner info"><div>Period is locked. Rate changes now apply to September 2026 as v'+(R.version+1)+'.</div></div>':''}
+  </div></div></div>
+  <div class="card"><div class="card-h"><div><h2>Impact preview</h2><p>At α = ${Math.round(R.alpha*100)}%, by metric</p></div></div><div class="tw"><table><thead><tr><th>Metric</th><th class="r">Lowest bill</th><th class="r">Highest bill</th><th class="r">B01</th></tr></thead><tbody>${sim.map(s=>`<tr class="${s.k===R.metric?'hl':''}"><td>${esc(METRICS[s.k].short)}</td><td class="r">${usd0(s.min)}</td><td class="r">${usd0(s.max)}</td><td class="r">${usd0(s.b01)}</td></tr>`).join('')}</tbody></table></div><div class="card-b"><p class="hint">Freight orders track business volume most closely and are the recommended metric. Active users are kept as a secondary report for licence planning.</p></div></div>
+  </div>`;
+}
+function pRecon(){
+  const a = allocate();
+  return head('Reconciliation · August 2026','The 13 bottler charges must add up to what CONA paid for the period.', btnDl('recon','xlsx')+btnDl('recon','pdf')) + `<div class="grid g2">
+  <div class="card"><div class="card-h"><h2>Cost for the period (C)</h2></div><div class="tw"><table><thead><tr><th>Cost line</th><th>Source</th><th class="r">Amount</th></tr></thead><tbody>${COST_LINES.map(c=>`<tr><td>${esc(c.line)}</td><td class="small muted">${esc(c.source)}</td><td class="r">${usd(c.amt)}</td></tr>`).join('')}</tbody><tfoot><tr><td colspan="2">Total cost</td><td class="r">${usd(a.C)}</td></tr></tfoot></table></div></div>
+  <div class="card"><div class="card-h"><h2>Allocation check</h2>${chip(Math.abs(a.allocated-a.C)<0.005?'Approved':'Failed').replace('Approved','Reconciled')}</div><div class="tw"><table><tbody>
+    <tr><td>Fixed pool (α × C)</td><td class="r">${usd(a.C*a.alpha)}</td></tr>
+    <tr><td>Variable pool ((1 − α) × C)</td><td class="r">${usd(a.varPool)}</td></tr>
+    <tr><td>Sum of rounded bottler charges</td><td class="r">${usd(a.allocated - a.rounding)}</td></tr>
+    <tr><td>Rounding adjustment (to largest bottler)</td><td class="r">${usd(a.rounding)}</td></tr>
+    <tr><td><b>Allocated total</b></td><td class="r"><b>${usd(a.allocated)}</b></td></tr>
+    <tr><td><b>Difference to invoice</b></td><td class="r"><b>${usd(a.C-a.allocated)}</b></td></tr>
+    <tr><td>Credits carried from July disputes</td><td class="r">-${usd(a.rows.reduce((s,r)=>s+r.credit,0))}</td></tr>
+    <tr><td class="muted">Unattributed volume</td><td class="r muted">${int(a.sus.fo)} orders</td></tr>
+  </tbody></table></div><div class="card-b"><p class="hint">Credits reduce what a bottler pays; CONA absorbs them as a recovery variance reported to the executive.</p></div></div></div>`;
+}
+function pDisputes(){
+  const list = S.disputes;
+  return head('Disputes','Bottler challenges to statement lines. Decide within the window; approved credits carry to the next statement.', btnDl('disputes','xlsx')+btnDl('disputes','pdf')) + `<div class="card"><div class="tw"><table><thead><tr><th>ID</th><th>Bottler</th><th>Period</th><th>Line</th><th>Reason</th><th class="r">Claimed</th><th>Raised</th><th>Status</th><th class="r">Credit</th><th></th></tr></thead><tbody>
+  ${list.map(d=>`<tr class="${d.status==='Submitted'?'hl':''}"><td class="mono">${d.id}</td><td>${d.bottler} · ${esc(BMAP[d.bottler].name)}</td><td class="num small">${d.period}</td><td class="small">${esc(d.line)}</td><td class="small">${esc(d.reason)}</td><td class="r">${usd(d.claimed)}</td><td class="small">${esc(d.raisedBy)}<div class="hint">${d.raised}</div></td><td>${chip(d.status)}</td><td class="r">${d.credit?usd(d.credit):'—'}</td><td><button class="btn sm ${d.status==='Submitted'?'primary':''}" data-act="open-dispute" data-id="${d.id}">${d.status==='Submitted'?'Decide':'View'}</button></td></tr>`).join('')}
+  </tbody></table></div></div>`;
+}
+
+/* ---------- pages: Bottler ---------- */
+function bottlerStatement(bid, a=allocate()){
+  const r = a.rows.find(x=>x.id===bid); const m = METRICS[a.metric];
+  const lines = [
+    {line:'Fixed platform share',basis:`${pct(a.alpha,0)} of ${usd(a.C)} ÷ 13 bottlers`,amt:r.fixed},
+    {line:'Variable usage charge',basis:`${int(r.usage)} ${m.unit} × ${usd(a.ratePer,4)}`+(r.roundAdj?` (incl. ${usd(r.roundAdj)} rounding)`:''),amt:r.variable}
+  ];
+  if (r.credit) lines.push({line:'Credit from dispute '+S.carriedCredits.filter(c=>c.bottler===bid).map(c=>c.id).join(', '),basis:'Approved July 2026',amt:-r.credit});
+  return {r,lines,no:'CB-2026-08-'+bid,total:r2(lines.reduce((s,l)=>s+l.amt,0))};
+}
+function pUsage(){
+  const b = BMAP['B01']; const a = allocate(); const r = a.rows[0];
+  seed = 404; const days = Array.from({length:25},(_,i)=>{ const dt = new Date(2026,8,i+1); const we = dt.getDay()===0||dt.getDay()===6; return {d:i+1,l:dt.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'}),we,v:Math.round((we?210:560)*(0.85+rnd()*0.3))}; });
+  const mtd = days.reduce((s,d)=>s+d.v,0); const proj = Math.round(mtd/25*30);
+  const projCharge = a.fixedEach + proj*a.ratePer;
+  const users = [['Kevin Draper','Transport planner',1412,'2026-09-25'],['Maria Olsen','Transport planner',1288,'2026-09-25'],['Tom Hughes','Dispatcher',964,'2026-09-24'],['Aisha Grant','Carrier manager',702,'2026-09-25'],['Luis Ortega','Dispatcher',655,'2026-09-23'],['Beth Kim','Freight analyst',318,'2026-09-22']];
+  return head('Great Lakes Bottling Co. · usage','Your BN4L usage and what it costs. You only see Great Lakes (B01) data.', `<span class="sample-note">Sample data</span>${btnDl('usage','xlsx')}${btnDl('usage','pdf')}`) + `<div class="stack">
+  ${roleStrip('bot')}
+  <div class="grid g4">${kpi('September to date',int(mtd)+' orders','1–25 Sep · '+int(proj)+' projected')}${kpi('Projected September charge',usd0(projCharge),'At August rates')}${kpi('August charge',usd(r.total),S.issued?'Statement issued':'Period close in progress',S.issued?'good':null)}${kpi('Share of network',pct(r.share,2),'of freight orders in August')}</div>
+  <div class="grid g-main">
+  <div class="card"><div class="card-h"><div><h2>Daily freight orders · September 2026</h2><p>Weekends shown lighter</p></div></div><div class="card-b">${dailyBars(days)}</div></div>
+  <div class="card"><div class="card-h"><div><h2>August usage by metric</h2><p>Only freight orders drive the variable charge</p></div></div><div class="tw"><table><thead><tr><th>Metric</th><th class="r">B01</th><th class="r">Network</th><th class="r">Share</th></tr></thead><tbody>${Object.values(METRICS).map(m=>{ const tot = a.rows.reduce((s,x)=>s+x[m.key],0); return `<tr class="${m.key===a.metric?'hl':''}"><td>${esc(m.short)}</td><td class="r">${int(r[m.key])}</td><td class="r">${int(tot)}</td><td class="r">${pct(r[m.key]/tot,2)}</td></tr>`; }).join('')}</tbody></table></div></div></div>
+  <div class="card"><div class="card-h"><div><h2>Top users · September to date</h2><p>Named users with the most freight orders created or changed</p></div></div><div class="tw"><table><thead><tr><th>User</th><th>Role</th><th class="r">Freight orders</th><th class="r">Est. cost</th><th>Last active</th></tr></thead><tbody>${users.map(u=>`<tr><td>${esc(u[0])}</td><td class="small muted">${esc(u[1])}</td><td class="r">${int(u[2])}</td><td class="r">${usd(u[2]*a.ratePer)}</td><td class="num small">${u[3]}</td></tr>`).join('')}</tbody></table></div></div></div>`;
+}
+function pStatements(){
+  const st = bottlerStatement('B01'); const hist = HIST.map(h=>({p:h[1],amt:histCharges(h[0]).B01,status:'Paid'})).reverse();
+  const myOpen = S.disputes.find(d=>d.bottler==='B01'&&d.period==='2026-08');
+  const body = S.issued ? `<div class="card"><div class="card-h"><div><span class="eyebrow">Statement ${st.no}</span><h2 style="margin-top:4px">August 2026 · ${usd(st.total)} due</h2><p>Issued ${S.issuedAt} · payable by 2026-10-26 · dispute by 2026-10-10</p></div><div class="row">${btnDl('statement','pdf')}${btnDl('statement','xlsx')}</div></div>
+    <div class="tw"><table><thead><tr><th>Line</th><th>Basis</th><th class="r">Amount</th><th></th></tr></thead><tbody>${st.lines.map((l,i)=>`<tr><td>${esc(l.line)}</td><td class="small muted">${esc(l.basis)}</td><td class="r">${usd(l.amt)}</td><td>${l.amt>0&&!myOpen?`<button class="btn sm" data-act="dispute-line" data-i="${i}">Dispute</button>`:''}</td></tr>`).join('')}</tbody><tfoot><tr><td colspan="2">Amount due</td><td class="r">${usd(st.total)}</td><td></td></tr></tfoot></table></div>
+    <div class="card-b"><p class="hint">Rate card v${S.rate.version} · snapshot ${S.snapshot?.id||''} · ${int(st.r.usage)} freight orders attributed to B01 from BN4L ledger</p></div></div>`
+  : `<div class="banner info"><div><b>August statement not issued yet.</b> CONA finance is closing the period (due 30 Sep 2026). You can follow your running usage under My usage.</div></div>`;
+  return head('Statements','Monthly chargeback statements for Great Lakes Bottling Co. (B01).') + `<div class="stack">${body}
+  ${myOpen?`<div class="banner ${myOpen.status==='Submitted'?'warn':myOpen.status==='Approved'?'good':'info'}"><div><b>Dispute ${myOpen.id} · ${esc(myOpen.status)}</b><br><span class="small">${esc(myOpen.line)} · claimed ${usd(myOpen.claimed)}${myOpen.status!=='Submitted'?' · '+esc(myOpen.note):''}</span></div><button class="btn sm" data-act="go" data-page="mydisputes">Track</button></div>`:''}
+  <div class="card"><div class="card-h"><h2>Earlier statements</h2></div><div class="tw"><table><thead><tr><th>Period</th><th>Statement</th><th class="r">Amount</th><th>Status</th></tr></thead><tbody>${hist.map((h,i)=>`<tr><td>${h.p}</td><td class="mono">CB-${HIST[4-i][0]}-B01</td><td class="r">${usd(h.amt)}</td><td>${chip(h.status)}</td></tr>`).join('')}</tbody></table></div></div></div>`;
+}
+function pMyDisputes(){
+  const mine = S.disputes.filter(d=>d.bottler==='B01');
+  return head('My disputes','Challenges raised by Great Lakes Bottling Co.', btnDl('mydisputes','xlsx')+btnDl('mydisputes','pdf')) + (mine.length? `<div class="stack">${mine.map(d=>`<div class="card"><div class="card-h"><div><span class="eyebrow">${d.id} · ${d.period}</span><h2 style="margin-top:4px">${esc(d.line)} · ${usd(d.claimed)} claimed</h2></div>${chip(d.status)}</div><div class="card-b grid g2"><div><p class="small"><b>Reason:</b> ${esc(d.reason)}</p><p class="small muted" style="margin-top:6px">${esc(d.desc)}</p></div><div class="timeline"><div class="ev"><b>Submitted</b><p>${d.raised} · ${esc(d.raisedBy)}</p></div>${d.status==='Submitted'?`<div class="ev"><b>With CONA finance</b><p>Decision due by 2026-10-10</p></div>`:`<div class="ev"><b>${d.status}</b><p>${d.decided} · ${esc(d.decidedBy)}</p></div><div class="ev"><b>${d.status==='Approved'?'Credit '+usd(d.credit)+' on September statement':'No credit'}</b><p>${esc(d.note)}</p></div>`}</div></div></div>`).join('')}</div>` : `<div class="card empty">No disputes yet. Raise one from a line on an issued statement.</div>`);
+}
+
+/* ---------- pages: Executive ---------- */
+function pDash(){
+  S.visitedExec = true;
+  const a = allocate(); const pts = HIST.map(h=>({l:h[1].split(' ')[0],v:h[2]})).concat([{l:'Aug',v:a.C,note:S.issued?'Issued':'Close in progress'}]);
+  const credits = S.disputes.filter(d=>d.status==='Approved').reduce((s,d)=>s+d.credit,0);
+  const movers = [...a.rows].sort((x,y)=>Math.abs(y.delta)-Math.abs(x.delta)).slice(0,5);
+  const cpo = a.C / (a.rows.reduce((s,r)=>s+r.fo,0));
+  return head('Shared platform economics','BN4L cost and recovery across the 13 bottlers.', `<span class="sample-note">Sample data</span>${btnDl('exec','xlsx')}${btnDl('exec','pdf')}`) + `<div class="stack">
+  ${roleStrip('exec')}
+  <div class="grid g4">${kpi('August platform cost',usd0(a.C),'+'+pct(a.C/HIST[4][2]-1,1)+' vs July')}${kpi('Recovered from bottlers',S.issued?pct(1,0):'Pending',S.issued?usd0(a.allocated)+' billed':'Statements not issued yet',S.issued?'good':'warn')}${kpi('Cost per freight order',usd(cpo,2),'Network average')}${kpi('Disputes',S.disputes.filter(d=>d.status==='Submitted').length+' open',usd0(credits)+' credited to date')}</div>
+  <div class="grid g-main">
+    <div class="card"><div class="card-h"><div><h2>Monthly platform cost</h2><p>Total BN4L and hub cost, March–August 2026</p></div></div><div class="card-b">${lineChart(pts,'Total cost')}</div></div>
+    <div class="card"><div class="card-h"><div><h2>Largest changes vs July</h2><p>By absolute change in charge</p></div></div><div class="tw"><table><thead><tr><th>Bottler</th><th class="r">August</th><th class="r">Change</th></tr></thead><tbody>${movers.map(r=>`<tr><td>${r.id} · ${esc(r.name)}</td><td class="r">${usd0(r.total)}</td><td class="r" style="color:${r.delta>0?'var(--warn)':'var(--good)'}">${r.delta>0?'+':''}${usd0(r.delta)}</td></tr>`).join('')}</tbody></table></div></div>
+  </div>
+  <div class="card"><div class="card-h"><div><h2>August charge by bottler</h2><p>Fixed platform share plus variable usage</p></div></div><div class="card-b">${stackedBars([...a.rows].sort((x,y)=>y.total-x.total))}</div></div></div>`;
+}
+
+/* ---------- pages: Auditor ---------- */
+function pAudit(){
+  const cats = ['All','Integration','Attribution','Rate card','Period','Statements','Disputes'];
+  const f = S.filters.auditCat; const list = [...S.audit].sort((a,b)=>b.ts.localeCompare(a.ts)).filter(e=>f==='All'||e.cat===f);
+  return head('Audit trail','Every change with who, when and what. Read only.', btnDl('audit','xlsx')+btnDl('audit','pdf')) + `<div class="stack">
+  ${roleStrip('aud')}
+  <div class="grid g4">${kpi('Events logged',S.audit.length)}${kpi('Changes after lock',S.locked?S.audit.filter(e=>e.ts>S.lockedAt && ['Rate card','Attribution'].includes(e.cat)&&e.action!=='Rule scheduled').length:'—','Target 0','good')}${kpi('Rate card versions (2026)',S.rate.version)}${kpi('Segregation of duties','Pass','Approver ≠ admin','good')}</div>
+  <div class="card"><div class="card-h"><h2>Events</h2><div class="seg" role="group" aria-label="Filter category">${cats.map(c=>`<button class="${f===c?'on':''}" data-act="auditcat" data-k="${c}">${c}</button>`).join('')}</div></div><div class="tw"><table><thead><tr><th>Time</th><th>Actor</th><th>Category</th><th>Action</th><th>Object</th><th>Detail</th></tr></thead><tbody>${list.map(e=>`<tr><td class="num small">${e.ts}</td><td class="small">${esc(e.actor)}</td><td class="small">${esc(e.cat)}</td><td>${esc(e.action)}</td><td class="mono">${esc(e.obj)}</td><td class="small muted">${esc(e.detail)}</td></tr>`).join('') || '<tr><td colspan="6" class="empty">No events in this category</td></tr>'}</tbody></table></div></div></div>`;
+}
+function pSnapshots(){
+  const snaps = [['SNAP-2026-07-4F1C','2026-07','2026-08-04 17:22','Mark Ellison','v3','9c1e…b20a',41208],['SNAP-2026-06-2A77','2026-06','2026-07-03 16:05','Mark Ellison','v3','73fd…11c9',40116],['SNAP-2026-05-8D03','2026-05','2026-06-04 15:48','Mark Ellison','v2','e04a…6f3d',39570]];
+  if (S.snapshot) snaps.unshift([S.snapshot.id,'2026-08',S.lockedAt,'Mark Ellison','v'+S.rate.version,S.snapshot.hash,S.snapshot.rows]);
+  return head('Snapshots & versions','Locked periods are frozen as snapshots with a checksum. Rate cards and mapping rules are versioned.') + `<div class="stack">
+  <div class="card"><div class="card-h"><h2>Period snapshots</h2></div><div class="tw"><table><thead><tr><th>Snapshot</th><th>Period</th><th>Locked</th><th>By</th><th>Rate card</th><th>Checksum</th><th class="r">Ledger rows</th></tr></thead><tbody>${snaps.map(s=>`<tr><td class="mono">${s[0]}</td><td>${s[1]}</td><td class="num small">${s[2]}</td><td class="small">${s[3]}</td><td>${s[4]}</td><td class="mono">${s[5]}</td><td class="r">${int(s[6])}</td></tr>`).join('')}</tbody></table></div></div>
+  <div class="card"><div class="card-h"><h2>Rate card versions</h2></div><div class="tw"><table><thead><tr><th>Version</th><th>Metric</th><th class="r">Fixed share</th><th>Effective</th><th>Status</th><th>Approved by</th></tr></thead><tbody>
+    <tr><td>v${S.rate.version}</td><td>${esc(METRICS[S.rate.metric].short)}</td><td class="r">${pct(S.rate.alpha,0)}</td><td>2026-08</td><td>${chip(S.rate.approved?'Approved':'Draft')}</td><td class="small">${S.rate.approved?esc(S.rate.approvedBy)+' · '+S.rate.approvedAt:'—'}</td></tr>
+    <tr><td>v3</td><td>Freight orders</td><td class="r">30%</td><td>2026-06 to 2026-07</td><td>${chip('Approved')}</td><td class="small">Mark Ellison · 2026-06-02</td></tr>
+    <tr><td>v2</td><td>Freight orders</td><td class="r">40%</td><td>2026-03 to 2026-05</td><td>${chip('Approved')}</td><td class="small">Mark Ellison · 2026-03-01</td></tr>
+    <tr><td>v1</td><td>Active users</td><td class="r">50%</td><td>2026-01 to 2026-02</td><td>${chip('Approved')}</td><td class="small">Mark Ellison · 2026-01-05</td></tr>
+  </tbody></table></div></div></div>`;
+}
+
+/* ---------- personas directory & reports ---------- */
+function pPersonas(){
+  const caps = [
+    ['Monitor and re-run integration runs','yes','no','no','no','ro'],
+    ['Resolve suspense and create mapping rules','yes','ro','no','no','ro'],
+    ['Maintain bottler master and exclusions','yes','ro','no','no','ro'],
+    ['Edit and approve rate card','no','yes','no','no','ro'],
+    ['Lock period and issue statements','no','yes','no','no','ro'],
+    ['View allocation for all bottlers','ro','yes','no','ro','ro'],
+    ['View own bottler usage and statements','no','yes','yes','ro','ro'],
+    ['Raise disputes','no','no','yes','no','no'],
+    ['Decide disputes','no','yes','no','no','ro'],
+    ['Executive dashboard','no','ro','no','yes','ro'],
+    ['Audit trail and snapshots','ro','ro','no','no','yes'],
+    ['Download reports (Excel, PDF)','yes','yes','own','yes','yes']
+  ];
+  const cell = v => v==='yes'?'<span class="yes">Full</span>':v==='ro'?'<span class="ro">View</span>':v==='own'?'<span class="ro">Own only</span>':'<span class="no">—</span>';
+  return head('Personas','Five roles use the hub. Switch persona from the top bar to see the app as each of them.') + `<div class="stack"><div class="grid g2">
+  ${Object.values(PERSONAS).map(P=>`<div class="card persona-card"><div class="ph"><span class="avatar" style="background:${P.color}">${P.init}</span><div style="flex:1;min-width:0"><h2>${esc(P.name)}</h2><p class="small muted">${esc(P.title)} · ${esc(P.org)}</p></div><button class="btn sm" data-act="persona" data-p="${P.key}">View as ${esc(P.name.split(' ')[0])}</button></div>
+  <p class="quote" style="padding-top:12px">“${esc(P.quote)}”</p>
+  <div class="pb"><div><span class="eyebrow">Goals</span><ul>${P.goals.map(x=>`<li>${esc(x)}</li>`).join('')}</ul></div><div><span class="eyebrow">Key tasks</span><ul>${P.tasks.map(x=>`<li>${esc(x)}</li>`).join('')}</ul></div><div><span class="eyebrow">Pain points today</span><ul>${P.pains.map(x=>`<li>${esc(x)}</li>`).join('')}</ul></div><div><span class="eyebrow">KPIs watched</span><ul>${P.kpis.map(x=>`<li>${esc(x)}</li>`).join('')}</ul><span class="eyebrow" style="display:block;margin-top:10px">Access</span><ul><li class="mono">${esc(P.role)}</li><li>${esc(P.scope)}</li></ul></div></div></div>`).join('')}
+  </div>
+  <div class="card"><div class="card-h"><div><h2>Access matrix</h2><p>Enforced by BTP role collections and SAC data-access control on Bottler ID</p></div></div><div class="tw"><table class="matrix"><thead><tr><th>Capability</th>${Object.values(PERSONAS).map(P=>`<th class="r" style="text-align:center">${esc(P.title.split(' ').slice(0,2).join(' '))}</th>`).join('')}</tr></thead><tbody>${caps.map(c=>`<tr><td>${c[0]}</td>${c.slice(1).map(v=>`<td class="c">${cell(v)}</td>`).join('')}</tr>`).join('')}</tbody></table></div></div></div>`;
+}
+const REPORTS = {
+  summary:{t:'Chargeback summary',d:'Allocation by bottler, reconciliation, rate card and usage by metric for the period.',who:['fin','exec','aud']},
+  statement:{t:'Bottler statement',d:'Statement lines, basis, usage evidence and dispute instructions for one bottler.',who:['fin','bot','aud']},
+  allstatements:{t:'All statements (13)',d:'Every bottler statement for the period in one file.',who:['fin','aud']},
+  recon:{t:'Reconciliation',d:'Cost lines from the SAP invoice and BTP versus allocated totals and rounding.',who:['fin','aud','exec']},
+  usage:{t:'Usage detail',d:'Usage by metric per bottler and daily volumes month to date.',who:['admin','fin','bot']},
+  runs:{t:'Integration run log',d:'Every iFlow run with duration, records and errors.',who:['admin','aud']},
+  suspense:{t:'Suspense & attribution',d:'Open and resolved suspense items with assigned bottler and rule.',who:['admin','fin','aud']},
+  disputes:{t:'Dispute register',d:'All disputes with claims, decisions, credits and notes.',who:['fin','aud','exec']},
+  mydisputes:{t:'My disputes',d:'Disputes raised by your bottler with status and outcome.',who:['bot']},
+  exec:{t:'Executive summary',d:'Cost trend, recovery, cost per order and largest movers.',who:['exec','fin']},
+  audit:{t:'Audit trail',d:'Every logged event with actor, time, object and detail.',who:['aud','admin']}
+};
+function pReports(){
+  const p = S.persona; const mine = Object.entries(REPORTS).filter(([k,r])=>r.who.includes(p));
+  const pickB = (p==='fin'||p==='aud') ? `<div class="row"><label for="repB" class="small muted">Bottler for statement and usage</label><select id="repB" class="inline" data-act="repb">${BOTTLERS.map(b=>`<option value="${b.id}" ${S.filters.repBottler===b.id?'selected':''}>${b.id} · ${esc(b.name)}</option>`).join('')}</select></div>` : '';
+  return head('Reports',`Reports available to ${esc(PERSONAS[p].title)}. Each downloads as Excel (.xlsx) or PDF with the data shown in the app.`, pickB) + `<div class="grid g3">${mine.map(([k,r])=>`<div class="card rep"><div class="row" style="justify-content:space-between"><h2>${esc(r.t)}</h2><span class="tag">${k==='statement'&&!S.issued?'Draft':PERIOD.label}</span></div><p class="small muted">${esc(r.d)}</p><p class="meta">Sources: BN4L ledger · rate card v${S.rate.version} · ${S.locked?'snapshot '+S.snapshot.id:'live (period open)'}</p><div class="fmt">${btnDl(k,'xlsx')}${btnDl(k,'pdf')}</div></div>`).join('')}</div>`;
+}
+
+/* ---------- report data builder ---------- */
+function reportData(key){
+  const a = allocate(); const m = METRICS[a.metric]; const P = PERSONAS[S.persona];
+  const bSel = S.persona==='bot' ? 'B01' : S.filters.repBottler;
+  const meta = [['Report',REPORTS[key]?.t||key],['Period',PERIOD.label],['Status',periodStatus()],['Rate card','v'+S.rate.version+(S.rate.approved?' (approved)':' (draft)')],['Snapshot',S.snapshot?.id||'Not locked'],['Generated',NOW()+' by '+P.name+' ('+P.title+')'],['Data','Sample data from the BN4L Chargeback Hub prototype']];
+  const allocCols = [{h:'Bottler ID',t:'text'},{h:'Bottler',t:'text'},{h:m.short,t:'int'},{h:'Share',t:'pct'},{h:'Fixed',t:'usd'},{h:'Variable',t:'usd'},{h:'Total charge',t:'usd'},{h:'July',t:'usd'},{h:'Change',t:'usd'},{h:'Credits',t:'usd'},{h:'Net due',t:'usd'}];
+  const allocRows = a.rows.map(r=>[r.id,r.name,r.usage,r.share,r.fixed,r.variable,r.total,r.prev,r2(r.delta),-r.credit,r.net]);
+  const allocTot = ['Total','13 bottlers',a.U,1,r2(a.rows.reduce((s,r)=>s+r.fixed,0)),r2(a.rows.reduce((s,r)=>s+r.variable,0)),a.allocated,HIST[4][2],r2(a.allocated-HIST[4][2]),-r2(a.rows.reduce((s,r)=>s+r.credit,0)),r2(a.rows.reduce((s,r)=>s+r.net,0))];
+  const reconSec = {name:'Reconciliation',cols:[{h:'Item',t:'text'},{h:'Source',t:'text'},{h:'Amount',t:'usd'}],rows:[...COST_LINES.map(c=>[c.line,c.source,c.amt]),['Total cost (C)','',a.C],['Fixed pool','α × C',r2(a.C*a.alpha)],['Variable pool','(1 − α) × C',r2(a.varPool)],['Rounding adjustment','Largest bottler',a.rounding],['Allocated total','Sum of statements',a.allocated],['Difference','C − allocated',r2(a.C-a.allocated)]]};
+  const rateSec = {name:'Rate card',cols:[{h:'Parameter',t:'text'},{h:'Value',t:'text'}],rows:[['Version','v'+S.rate.version],['Status',S.rate.approved?'Approved':'Draft'],['Approved by',S.rate.approvedBy||'—'],['Metric',m.label],['Fixed share (alpha)',pct(a.alpha,0)],['Fixed share per bottler',usd(a.fixedEach)],['Variable rate',usd(a.ratePer,4)+' per '+m.unit.replace(/s$/,'')],['Formula','Charge = α·C/N + (1−α)·C·Ub/ΣU'],['Rounding',S.rate.rounding],['Dispute window',S.rate.window+' business days']]};
+  const usageSec = {name:'Usage by metric',cols:[{h:'Bottler ID',t:'text'},{h:'Bottler',t:'text'},{h:'Freight orders',t:'int'},{h:'Active users',t:'int'},{h:'Tracking events',t:'int'},{h:'Tenders',t:'int'}],rows:a.rows.map(r=>[r.id,r.name,r.fo,r.users,r.ev,r.te])};
+  const stmtSec = (bid) => { const st = bottlerStatement(bid,a); const b = BMAP[bid];
+    return [{name:'Statement '+bid,kv:[['Statement no.',st.no],['Bill to',b.name+' ('+bid+')'],['Finance contact',b.contact],['Period',PERIOD.label],['Issued',S.issuedAt||'Draft — not issued'],['Payment due','2026-10-26'],['Dispute by','2026-10-10']],cols:[{h:'Line',t:'text'},{h:'Basis',t:'text'},{h:'Amount',t:'usd'}],rows:st.lines.map(l=>[l.line,l.basis,l.amt]),total:['Amount due','',st.total]},
+      {name:'Usage evidence '+bid,cols:[{h:'Metric',t:'text'},{h:bid,t:'int'},{h:'Network',t:'int'},{h:'Share',t:'pct'}],rows:Object.values(METRICS).map(mm=>{const tot=a.rows.reduce((s,x)=>s+x[mm.key],0);return [mm.short,st.r[mm.key],tot,st.r[mm.key]/tot];})}]; };
+  const dispCols = [{h:'ID',t:'text'},{h:'Bottler',t:'text'},{h:'Period',t:'text'},{h:'Line',t:'text'},{h:'Reason',t:'text'},{h:'Claimed',t:'usd'},{h:'Raised',t:'text'},{h:'Status',t:'text'},{h:'Credit',t:'usd'},{h:'Decided by',t:'text'},{h:'Note',t:'text'}];
+  const dispRow = d=>[d.id,d.bottler+' '+BMAP[d.bottler].name,d.period,d.line,d.reason,d.claimed,d.raised+' '+d.raisedBy,d.status,d.credit,d.decidedBy||'',d.note||''];
+  let out;
+  switch(key){
+    case 'summary': out={kpis:[['Total cost',usd(a.C)],['Allocated',usd(a.allocated)],['Difference',usd(a.C-a.allocated)],['Attributed',pct(attributionRate(),2)]],sections:[{name:'Allocation',cols:allocCols,rows:allocRows,total:allocTot},reconSec,rateSec,usageSec]}; break;
+    case 'statement': out={kpis:[],sections:stmtSec(bSel),portrait:true,titleSuffix:' — '+BMAP[bSel].name}; break;
+    case 'allstatements': out={kpis:[['Statements',13],['Total',usd(a.allocated)]],sections:BOTTLERS.map(b=>stmtSec(b.id)[0])}; break;
+    case 'recon': out={kpis:[['Invoiced',usd(a.C)],['Allocated',usd(a.allocated)],['Difference',usd(a.C-a.allocated)]],sections:[reconSec]}; break;
+    case 'usage': { seed=404; const days=Array.from({length:25},(_,i)=>{const dt=new Date(2026,8,i+1);const we=dt.getDay()===0||dt.getDay()===6;return ['2026-09-'+String(i+1).padStart(2,'0'),we?'Weekend':'Weekday',Math.round((we?210:560)*(0.85+rnd()*0.3))];});
+      const scale = bSel==='B01'?1:BMAP[bSel].fo/BMAP.B01.fo;
+      out={kpis:[['Bottler',bSel+' '+BMAP[bSel].name]],titleSuffix:' — '+BMAP[bSel].name,sections:[{name:'August by metric',cols:[{h:'Metric',t:'text'},{h:bSel,t:'int'},{h:'Network',t:'int'},{h:'Share',t:'pct'}],rows:Object.values(METRICS).map(mm=>{const r=a.rows.find(x=>x.id===bSel);const tot=a.rows.reduce((s,x)=>s+x[mm.key],0);return [mm.short,r[mm.key],tot,r[mm.key]/tot];})},{name:'Daily Sep MTD',cols:[{h:'Date',t:'text'},{h:'Day type',t:'text'},{h:'Freight orders',t:'int'}],rows:days.map(d=>[d[0],d[1],Math.round(d[2]*scale)])}]}; break; }
+    case 'runs': out={kpis:[['Runs',S.runs.length],['Failed',S.runs.filter(r=>r.status==='Failed').length]],sections:[{name:'Integration runs',cols:[{h:'Run',t:'text'},{h:'iFlow',t:'text'},{h:'Source',t:'text'},{h:'Started',t:'text'},{h:'Duration',t:'text'},{h:'Records',t:'int'},{h:'Status',t:'text'},{h:'Error',t:'text'}],rows:S.runs.map(r=>[r.id,r.flow,r.src,r.start,r.dur,r.rec,r.status,r.err||''])}]}; break;
+    case 'suspense': out={kpis:[['Attribution rate',pct(attributionRate(),2)],['Open items',S.suspense.length],['Resolved',S.resolved.length]],sections:[{name:'Open suspense',cols:[{h:'Item',t:'text'},{h:'Object',t:'text'},{h:'Key',t:'text'},{h:'Reason',t:'text'},{h:'Freight orders',t:'int'},{h:'First seen',t:'text'},{h:'Suggested',t:'text'},{h:'Match',t:'pct'}],rows:S.suspense.map(s=>[s.id,s.obj,s.key,s.reason,s.fo,s.first,s.sug,s.conf])},{name:'Resolved',cols:[{h:'Item',t:'text'},{h:'Key',t:'text'},{h:'Assigned to',t:'text'},{h:'Freight orders',t:'int'},{h:'Rule',t:'text'},{h:'By',t:'text'},{h:'At',t:'text'}],rows:S.resolved.map(s=>[s.id,s.key,s.assign+' '+BMAP[s.assign].name,s.fo,s.rule||'One-off',s.by,s.at])}]}; break;
+    case 'disputes': out={kpis:[['Disputes',S.disputes.length],['Open',S.disputes.filter(d=>d.status==='Submitted').length]],sections:[{name:'Dispute register',cols:dispCols,rows:S.disputes.map(dispRow)}]}; break;
+    case 'mydisputes': out={kpis:[],titleSuffix:' — Great Lakes Bottling Co.',sections:[{name:'My disputes',cols:dispCols,rows:S.disputes.filter(d=>d.bottler==='B01').map(dispRow)}]}; break;
+    case 'exec': { const credits=S.disputes.filter(d=>d.status==='Approved').reduce((s,d)=>s+d.credit,0);
+      out={kpis:[['August cost',usd(a.C)],['Recovered',S.issued?'100%':'Pending'],['Cost per order',usd(a.C/a.rows.reduce((s,r)=>s+r.fo,0))],['Credits to date',usd(credits)]],sections:[{name:'Monthly cost',cols:[{h:'Month',t:'text'},{h:'Total cost',t:'usd'},{h:'Change',t:'pct'}],rows:HIST.map((h,i)=>[h[1],h[2],i?h[2]/HIST[i-1][2]-1:0]).concat([['Aug 2026',a.C,a.C/HIST[4][2]-1]])},{name:'Allocation',cols:allocCols,rows:allocRows,total:allocTot}]}; break; }
+    case 'audit': out={kpis:[['Events',S.audit.length]],sections:[{name:'Audit trail',cols:[{h:'Time',t:'text'},{h:'Actor',t:'text'},{h:'Category',t:'text'},{h:'Action',t:'text'},{h:'Object',t:'text'},{h:'Detail',t:'text'}],rows:[...S.audit].sort((x,y)=>y.ts.localeCompare(x.ts)).map(e=>[e.ts,e.actor,e.cat,e.action,e.obj,e.detail])}]}; break;
+  }
+  out.title = (REPORTS[key]?.t||key) + (out.titleSuffix||''); out.meta = meta;
+  out.file = ('BN4L_'+(REPORTS[key]?.t||key).replace(/[^A-Za-z0-9]+/g,'_')+'_'+(out.titleSuffix?bSel+'_':'')+PERIOD.id).replace(/_+/g,'_');
+  return out;
+}
+const fmtCell = (v,t) => v===''||v==null?'':t==='usd'?usd(v):t==='int'?int(v):t==='pct'?pct(v,2):String(v);
+
+function buildXlsx(R){
+  const X = window.XLSX; const wb = X.utils.book_new();
+  const cover = [[R.title],['BN4L Chargeback Hub · CONA'],[],...R.meta,[],...(R.kpis.length?[['Key figures'],...R.kpis]:[])];
+  const wsc = X.utils.aoa_to_sheet(cover); wsc['!cols']=[{wch:26},{wch:70}]; X.utils.book_append_sheet(wb, wsc, 'Cover');
+  const used = {};
+  R.sections.forEach(sec=>{
+    const aoa = []; if (sec.kv){ sec.kv.forEach(kv=>aoa.push(kv)); aoa.push([]); }
+    const hdr = aoa.length; aoa.push(sec.cols.map(c=>c.h)); sec.rows.forEach(r=>aoa.push(r)); if (sec.total) aoa.push(sec.total);
+    const ws = X.utils.aoa_to_sheet(aoa);
+    sec.cols.forEach((c,ci)=>{ const z = c.t==='usd'?'$#,##0.00;[Red]-$#,##0.00':c.t==='int'?'#,##0':c.t==='pct'?'0.00%':null; if(!z) return;
+      for(let ri=hdr+1; ri<aoa.length; ri++){ const ref = X.utils.encode_cell({r:ri,c:ci}); if (ws[ref] && typeof ws[ref].v==='number') ws[ref].z = z; } });
+    ws['!cols'] = sec.cols.map((c,ci)=>({wch:Math.min(48,Math.max(c.h.length+2, ...aoa.slice(hdr).map(r=>String(r[ci]??'').length+ (c.t==='usd'?4:1))))}));
+    if (sec.kv) ws['!cols'][0] = {wch:Math.max(ws['!cols'][0].wch,18)};
+    ws['!autofilter'] = {ref: X.utils.encode_range({s:{r:hdr,c:0},e:{r:hdr+sec.rows.length,c:sec.cols.length-1}})};
+    let name = sec.name.replace(/[\\\/\?\*\[\]:]/g,' ').slice(0,31); let n=name,i=2; while(used[n]){ n=name.slice(0,28)+' '+i++; } used[n]=1;
+    X.utils.book_append_sheet(wb, ws, n);
+  });
+  return X.write(wb, {bookType:'xlsx', type:'array'});
+}
+function buildPdf(R0){
+  const clean = v => typeof v==='string' ? v.replace(/α/g,'alpha').replace(/−/g,'-').replace(/Σ/g,'sum ').replace(/≥/g,'>=').replace(/≤/g,'<=').replace(/→/g,'->').replace(/ᵦ/g,'b').replace(/…/g,'...') : v;
+  const R = JSON.parse(JSON.stringify(R0), (k,v)=>clean(v));
+  const { jsPDF } = window.jspdf; const doc = new jsPDF({orientation:R.portrait?'portrait':'landscape',unit:'pt',format:'a4'});
+  const W = doc.internal.pageSize.getWidth(), H = doc.internal.pageSize.getHeight(), M = 40;
+  const blue=[11,99,206], ink=[23,32,51], mute=[90,100,119];
+  const header = () => { doc.setFillColor(...blue); doc.rect(0,0,W,6,'F'); doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.setTextColor(...blue); doc.text('BN4L CHARGEBACK HUB · CONA',M,26); doc.setFont('helvetica','normal'); doc.setTextColor(...mute); doc.text(PERIOD.label+' · '+periodStatus(),W-M,26,{align:'right'}); };
+  header();
+  doc.setFont('helvetica','bold'); doc.setFontSize(18); doc.setTextColor(...ink); doc.text(R.title, M, 56);
+  doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(...mute);
+  let y = 72; R.meta.slice(2).forEach(([k,v])=>{ doc.text(k+': '+v, M, y); y+=12; });
+  if (R.kpis.length){ y += 6; const bw = Math.min(170,(W-2*M-10*(R.kpis.length-1))/R.kpis.length);
+    R.kpis.forEach(([k,v],i)=>{ const x = M + i*(bw+10); doc.setDrawColor(220,226,235); doc.setFillColor(248,250,252); doc.roundedRect(x,y,bw,44,4,4,'FD'); doc.setFontSize(8); doc.setTextColor(...mute); doc.text(String(k),x+10,y+15); doc.setFont('helvetica','bold'); doc.setFontSize(12.5); doc.setTextColor(...ink); doc.text(String(v),x+10,y+33,{maxWidth:bw-16}); doc.setFont('helvetica','normal'); });
+    y += 60; }
+  R.sections.forEach((sec,si)=>{
+    if (y > H-120){ doc.addPage(); header(); y = 50; }
+    doc.setFont('helvetica','bold'); doc.setFontSize(11.5); doc.setTextColor(...ink); doc.text(sec.name, M, y+4); y += 12;
+    if (sec.kv){ doc.autoTable({startY:y, body:sec.kv, theme:'plain', styles:{fontSize:9,cellPadding:2.5,textColor:ink}, columnStyles:{0:{fontStyle:'bold',cellWidth:110,textColor:mute}}, margin:{left:M,right:M}}); y = doc.lastAutoTable.finalY + 8; }
+    const alignR = {}; sec.cols.forEach((c,ci)=>{ if(c.t!=='text') alignR[ci]={halign:'right'}; });
+    doc.autoTable({ startY:y, head:[sec.cols.map(c=>c.h)], body:sec.rows.map(r=>r.map((v,ci)=>fmtCell(v,sec.cols[ci].t))), foot: sec.total?[sec.total.map((v,ci)=>fmtCell(v,sec.cols[ci].t))]:undefined,
+      theme:'grid', styles:{fontSize:8.5,cellPadding:4,textColor:ink,lineColor:[226,231,238],lineWidth:0.5,overflow:'linebreak'}, headStyles:{fillColor:blue,textColor:255,fontStyle:'bold'}, footStyles:{fillColor:[231,240,251],textColor:ink,fontStyle:'bold'}, alternateRowStyles:{fillColor:[248,250,252]},
+      columnStyles:alignR, margin:{left:M,right:M,top:44}, didDrawPage:()=>header(), showFoot:'lastPage', showHead:'everyPage',
+      didParseCell:(d)=>{ if(d.section!=='body'&&d.section!=='foot') return; if(alignR[d.column.index]) d.cell.styles.halign='right'; } });
+    y = doc.lastAutoTable.finalY + 22;
+    if (R.portrait && si===0){ doc.setFontSize(8.5); doc.setTextColor(...mute); const t = doc.splitTextToSize('To dispute a line, open Statements in the BN4L Chargeback Hub and choose Dispute next to the line within '+S.rate.window+' business days of issue. Charges follow rate card v'+S.rate.version+': Charge = alpha x C / N + (1 - alpha) x C x U / sum(U), where C is the period cost CONA paid SAP.', W-2*M); doc.text(t, M, y-8); y += t.length*10; }
+  });
+  const n = doc.internal.getNumberOfPages();
+  for (let i=1;i<=n;i++){ doc.setPage(i); doc.setFontSize(8); doc.setTextColor(...mute); doc.text('Sample data · prototype · generated '+NOW(), M, H-20); doc.text('Page '+i+' of '+n, W-M, H-20, {align:'right'}); }
+  return doc.output('arraybuffer');
+}
+let dlApi; const dlReady = (async()=>{ try{ dlApi = window.claude?.use ? await window.claude.use('downloads') : null; }catch(e){ dlApi=null; } })();
+async function download(key, fmt){
+  if (fmt==='xlsx' && !window.XLSX){ toast('Excel library did not load. Check your connection and reload.'); return; }
+  if (fmt==='pdf' && !(window.jspdf && window.jspdf.jsPDF)){ toast('PDF library did not load. Check your connection and reload.'); return; }
+  const R = reportData(key); const filename = R.file + '.' + fmt;
+  let data; try { data = fmt==='xlsx' ? buildXlsx(R) : buildPdf(R); } catch(e){ console.error(e); toast('Could not build the file: '+e.message); return; }
+  const blob = new Blob([data], {type: fmt==='xlsx'?'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet':'application/pdf'});
+  await dlReady;
+  if (dlApi){
+    try { await dlApi.save({filename, data:blob}); toast('Saved '+filename); log('Statements','Report downloaded',R.title,filename); }
+    catch(e){ const c = e&&e.code; toast(c==='declined'?'Download cancelled':c==='rate_limited'?'A save prompt is already open':'Download not available here ('+(c||'error')+')'); }
+    return;
+  }
+  // outside the claude.ai viewer (e.g. file opened locally)
+  try { const u = URL.createObjectURL(blob); const aEl = document.createElement('a'); aEl.href=u; aEl.download=filename; document.body.appendChild(aEl); aEl.click(); aEl.remove(); setTimeout(()=>URL.revokeObjectURL(u),4000); toast('Downloading '+filename); log('Statements','Report downloaded',R.title,filename); }
+  catch(e){ toast('Downloads are not available in this view.'); }
+}
+
+/* ---------- drawers ---------- */
+function drawerHtml(){
+  const d = S.drawer; if(!d) return '';
+  if (d.type==='dispute-new'){
+    const st = bottlerStatement('B01'); const l = st.lines[d.i];
+    return `<div class="drawer-bg" data-act="close-bg"><div class="drawer" role="dialog" aria-modal="true" aria-labelledby="dh"><div class="dh"><div><span class="eyebrow">New dispute · ${st.no}</span><h2 id="dh" style="margin-top:4px">${esc(l.line)}</h2><p class="small muted">${esc(l.basis)} · ${usd(l.amt)}</p></div><button class="icon-btn" data-act="close" aria-label="Close">${ICON.close}</button></div>
+    <form class="db" id="dispForm"><div class="field"><label for="dreason">Reason</label><select id="dreason"><option>Test or sandbox usage</option><option>Duplicate records</option><option>Records belong to another bottler</option><option>Rate or formula applied incorrectly</option><option>Other</option></select></div>
+    <div class="field"><label for="dclaim">Amount you dispute (USD)</label><input id="dclaim" type="number" min="1" step="0.01" max="${l.amt}" value="${(Math.round(l.amt*0.045*100)/100).toFixed(2)}" required></div>
+    <div class="field"><label for="ddesc">What is wrong</label><textarea id="ddesc" required>About 690 freight orders created on 18–19 August by our carrier onboarding team were test orders in the production tenant.</textarea></div>
+    <div class="field"><label for="devid">Evidence reference</label><input id="devid" value="Ticket GLB-4471; order range FO-88120450 to FO-88121140"></div>
+    <div class="banner info"><div class="small">CONA finance decides within ${S.rate.window} business days (by 2026-10-10). An approved credit appears on your September statement.</div></div></form>
+    <div class="df"><button class="btn" data-act="close">Cancel</button><button class="btn primary" data-act="submit-dispute">Submit dispute</button></div></div></div>`;
+  }
+  if (d.type==='dispute-view'){
+    const x = S.disputes.find(z=>z.id===d.id); const can = S.persona==='fin' && x.status==='Submitted';
+    return `<div class="drawer-bg" data-act="close-bg"><div class="drawer" role="dialog" aria-modal="true" aria-labelledby="dh"><div class="dh"><div><span class="eyebrow">${x.id} · ${x.period}</span><h2 id="dh" style="margin-top:4px">${esc(BMAP[x.bottler].name)}</h2><p class="small muted">${esc(x.line)} · claimed ${usd(x.claimed)}</p></div><button class="icon-btn" data-act="close" aria-label="Close">${ICON.close}</button></div>
+    <div class="db"><div class="row">${chip(x.status)}<span class="small muted">Raised ${x.raised} by ${esc(x.raisedBy)}</span></div>
+    <div><span class="eyebrow">Reason</span><p style="margin-top:4px">${esc(x.reason)}</p></div><div><span class="eyebrow">Description</span><p style="margin-top:4px">${esc(x.desc)}</p></div>${x.evidence?`<div><span class="eyebrow">Evidence</span><p class="mono" style="margin-top:4px">${esc(x.evidence)}</p></div>`:''}
+    ${x.period==='2026-08'?`<div class="card"><div class="card-b small"><b>Ledger check</b><p class="muted" style="margin-top:4px">690 freight orders in the cited range were created by users in group BN4L_B01_USERS on 18–19 Aug with carrier "TEST CARRIER 01". At ${usd(allocate().ratePer,4)} per order that is ${usd(690*allocate().ratePer)}.</p></div></div>`:''}
+    ${can?`<div class="field"><label for="dcredit">Credit to approve (USD)</label><input id="dcredit" type="number" step="0.01" min="0" value="${Math.min(x.claimed, r2(690*allocate().ratePer)).toFixed(2)}"></div><div class="field"><label for="dnote">Decision note (shared with the bottler)</label><textarea id="dnote">Test orders confirmed in the ledger. Added carrier "TEST CARRIER 01" to exclusions from September.</textarea></div>`:
+      x.status!=='Submitted'?`<div class="timeline"><div class="ev"><b>Submitted</b><p>${x.raised} · ${esc(x.raisedBy)}</p></div><div class="ev"><b>${x.status}${x.credit?' · credit '+usd(x.credit):''}</b><p>${x.decided} · ${esc(x.decidedBy)}</p></div><div class="ev"><b>Note</b><p>${esc(x.note)}</p></div></div>`:'<p class="muted small">Waiting for CONA finance.</p>'}
+    </div>${can?`<div class="df"><button class="btn danger" data-act="decide" data-v="reject">Reject</button><button class="btn primary" data-act="decide" data-v="approve">Approve credit</button></div>`:''}</div></div>`;
+  }
+  if (d.type==='confirm'){
+    return `<div class="drawer-bg" data-act="close-bg"><div class="drawer" role="dialog" aria-modal="true" aria-labelledby="dh"><div class="dh"><div><h2 id="dh">${esc(d.title)}</h2></div><button class="icon-btn" data-act="close" aria-label="Close">${ICON.close}</button></div><div class="db"><p>${d.body}</p></div><div class="df"><button class="btn" data-act="close">Cancel</button><button class="btn primary" data-act="${d.act}">${esc(d.ok)}</button></div></div></div>`;
+  }
+  return '';
+}
+
+/* ---------- render ---------- */
+const PAGES = {overview:pAdminOverview,runs:pRuns,suspense:pSuspense,master:pMaster,exclusions:pExclusions,close:pClose,allocation:pAllocation,rate:pRate,recon:pRecon,disputes:pDisputes,usage:pUsage,statements:pStatements,mydisputes:pMyDisputes,dash:pDash,audit:pAudit,snapshots:pSnapshots,reports:pReports,personas:pPersonas};
+function render(){
+  if (S.persona==='exec' && S.page==='dash') S.visitedExec = true;
+  const P = PERSONAS[S.persona]; const unread = S.notes.filter(n=>n.to===S.persona && !n.read).length;
+  const cur = FLOW.findIndex(f=>!f.done()); const doneAll = cur===-1;
+  const counts = {suspense:S.suspense.length, runs:S.runs.filter(r=>r.status==='Failed').length, disputes:S.disputes.filter(d=>d.status==='Submitted').length};
+  const nav = NAV[S.persona].map(([k,l])=>`<a class="${S.page===k?'on':''}" data-act="go" data-page="${k}" tabindex="0">${esc(l)}${counts[k]?`<span class="cnt">${counts[k]}</span>`:''}</a>`).join('') + `<div class="sep"></div><a class="${S.page==='personas'?'on':''}" data-act="go" data-page="personas" tabindex="0">Personas & access</a>`;
+  const scrollY = window.scrollY;
+  $('#app').innerHTML = `
+  <header class="top">
+    <div class="brand"><span class="brand-mark">CB</span><div><b>BN4L Chargeback Hub</b><small>CONA · SAP BTP subaccount cona-chargeback-prd</small></div></div>
+    <div class="top-right">
+      <span class="period-pill"><span class="muted">Period</span><b>${PERIOD.label}</b>${chip(periodStatus())}</span>
+      <div class="rel"><button class="icon-btn" data-act="toggle-notes" aria-label="Notifications">${ICON.bell}${unread?`<span class="badge-dot">${unread}</span>`:''}</button>
+        ${S.menu==='notes'?`<div class="menu" role="menu">${S.notes.filter(n=>n.to===S.persona).slice(0,8).map(n=>`<div class="mi" style="display:block"><b style="font-weight:${n.read?400:600}">${esc(n.text)}</b><span>${n.ts}</span></div>`).join('')||'<div class="mi">No notifications</div>'}<button class="mi" data-act="mark-read" style="justify-content:center;color:var(--accent-text)">Mark all as read</button></div>`:''}</div>
+      <div class="rel"><button class="persona-btn" data-act="toggle-persona" aria-haspopup="menu"><span class="avatar" style="background:${P.color}">${P.init}</span><span style="text-align:left;line-height:1.2"><b style="font-size:13px;font-weight:600;display:block">${esc(P.name)}</b><span class="small muted">${esc(P.title)}</span></span></button>
+        ${S.menu==='persona'?`<div class="menu" role="menu"><div class="mi" style="display:block;background:var(--surface-2)"><span class="eyebrow">Switch persona</span></div>${Object.values(PERSONAS).map(x=>`<button class="mi ${x.key===S.persona?'on':''}" data-act="persona" data-p="${x.key}" role="menuitem"><span class="avatar" style="background:${x.color}">${x.init}</span><span><b>${esc(x.name)}</b><span>${esc(x.title)} · ${esc(x.org)}</span></span></button>`).join('')}<button class="mi" data-act="go" data-page="personas">${ICON.people}<span><b>All personas & access matrix</b></span></button><button class="mi" data-act="reset" style="color:var(--crit)"><span><b>Reset demo data</b><span>Start the August close again</span></span></button></div>`:''}</div>
+    </div>
+  </header>
+  <section class="flow" aria-label="End-to-end flow">
+    <div class="flow-head"><span class="eyebrow">End-to-end flow · August close</span><span class="small muted">${doneAll?'All 8 steps complete. Every persona has done their part.':'Step '+(cur+1)+' of 8 · '+esc(PERSONAS[FLOW[cur].p].name)+' ('+esc(PERSONAS[FLOW[cur].p].title)+')'}</span>
+    ${!doneAll?`<button class="btn sm primary" data-act="flow" data-i="${cur}" style="margin-left:auto">${S.persona===FLOW[cur].p&&S.page===FLOW[cur].page?'You are here':'Go to step '+(cur+1)} ${ICON.arrow}</button>`:`<button class="btn sm" data-act="reset" style="margin-left:auto">Run it again</button>`}</div>
+    <div class="flow-steps">${FLOW.map((f,i)=>`<button class="fstep ${f.done()?'done':i===cur?'current':''}" data-act="flow" data-i="${i}"><span class="n">${f.done()?'✓':i+1}</span><span><span class="t">${esc(f.t)}</span><br><span class="w">${esc(PERSONAS[f.p].name)}</span></span></button>`).join('')}</div>
+  </section>
+  <div class="layout">
+    <nav class="nav" aria-label="Main"><div class="who"><b>${esc(P.org)}</b><span>${esc(P.role)}</span></div>${nav}</nav>
+    <main id="main">${(PAGES[S.page]||PAGES.reports)()}</main>
+  </div>${drawerHtml()}`;
+  window.scrollTo(0, scrollY);
+}
+
+/* ---------- actions ---------- */
+function setPersona(p, page){ S.persona=p; S.page = page || NAV[p][0][0]; S.menu=null; S.drawer=null; }
+const handlers = {
+  go:(el)=>{ S.page=el.dataset.page; S.menu=null; window.scrollTo(0,0); },
+  persona:(el)=>{ setPersona(el.dataset.p, el.dataset.page); window.scrollTo(0,0); },
+  flow:(el)=>{ const f=FLOW[+el.dataset.i]; setPersona(f.p,f.page); window.scrollTo(0,0); },
+  'toggle-persona':()=>{ S.menu = S.menu==='persona'?null:'persona'; },
+  'toggle-notes':()=>{ S.menu = S.menu==='notes'?null:'notes'; },
+  'mark-read':()=>{ S.notes.forEach(n=>{ if(n.to===S.persona) n.read=true; }); S.menu=null; },
+  reset:()=>{ S.drawer={type:'confirm',title:'Reset demo data?',body:'This restores the August close to its starting point: one failed extract, 8 suspense items, a draft rate card and no statements.',ok:'Reset',act:'do-reset'}; S.menu=null; },
+  'do-reset':()=>{ S = freshState(); toast('Demo reset to the start of the August close'); },
+  rerun:(el)=>{ const r = S.runs.find(x=>x.id===el.dataset.id); r.status='Running'; r.err=null; render();
+    setTimeout(()=>{ r.status='Success'; r.rec=24960; r.dur='00:09:37'; r.start='2026-09-26 '+NOW().slice(11); log('Integration','Extract re-run succeeded',r.id,'24,960 tracking events loaded for 31 Aug','admin'); notify('fin','All August extracts are complete.'); toast('RUN-24522 re-run succeeded · 24,960 records'); render(); }, 1400); return 'norender'; },
+  resolve:(el)=>{ resolveItems([el.dataset.id]); },
+  'resolve-all':()=>{ resolveItems(S.suspense.map(s=>s.id)); },
+  'accept-high':()=>{ resolveItems(S.suspense.filter(s=>s.conf>=0.9).map(s=>s.id)); },
+  sort:(el)=>{ S.filters.allocSort = el.dataset.k; },
+  metric:(el)=>{ if(S.locked) return; S.rate.metric = el.dataset.k; if(S.rate.approved){ S.rate.approved=false; S.rate.version++; S.rate.draftFrom='v'+(S.rate.version-1); } log('Rate card','Metric changed','Rate card v'+S.rate.version,'Metric set to '+METRICS[el.dataset.k].label); },
+  'approve-rate':()=>{ S.rate.approved=true; S.rate.approvedBy='Mark Ellison'; S.rate.approvedAt=NOW(); log('Rate card','Rate card approved','Rate card v'+S.rate.version,METRICS[S.rate.metric].label+', fixed share '+pct(S.rate.alpha,0)); toast('Rate card v'+S.rate.version+' approved'); },
+  lock:()=>{ S.drawer={type:'confirm',title:'Lock August 2026?',body:'Locking freezes volumes, mapping results and rates for August into a snapshot. Later changes apply to September. This cannot be undone.',ok:'Lock period',act:'do-lock'}; },
+  'do-lock':()=>{ S.drawer=null; S.locked=true; S.lockedAt=NOW(); S.snapshot={id:'SNAP-2026-08-'+Math.floor(4096+Math.random()*61439).toString(16).toUpperCase(),hash:'a7'+Math.random().toString(16).slice(2,6)+'…'+Math.random().toString(16).slice(2,6),rows:42377}; log('Period','Period locked','2026-08','Snapshot '+S.snapshot.id+', allocated '+usd(allocate().allocated)); notify('aud','August 2026 locked as '+S.snapshot.id+'.'); toast('August 2026 locked · '+S.snapshot.id); },
+  issue:()=>{ S.drawer={type:'confirm',title:'Issue 13 statements?',body:'Each bottler finance contact gets the August statement and can view it in the hub. The '+S.rate.window+'-day dispute window starts today.',ok:'Issue statements',act:'do-issue'}; },
+  'do-issue':()=>{ S.drawer=null; S.issued=true; S.issuedAt=NOW(); log('Statements','Statements issued','2026-08','13 statements, '+usd(allocate().allocated)+' total'); notify('bot','Your August 2026 statement is ready: '+usd(bottlerStatement('B01').total)+'.'); notify('exec','August statements issued. 100% of '+usd0(totalCost())+' billed.'); toast('13 statements issued'); },
+  'dispute-line':(el)=>{ S.drawer={type:'dispute-new',i:+el.dataset.i}; },
+  'submit-dispute':()=>{ const st = bottlerStatement('B01'); const l = st.lines[S.drawer.i]; const claim = parseFloat($('#dclaim').value); const desc = $('#ddesc').value.trim();
+    if(!(claim>0) || claim>l.amt){ toast('Enter an amount between $0.01 and '+usd(l.amt)); return 'norender'; } if(!desc){ toast('Describe what is wrong'); return 'norender'; }
+    const id = 'DSP-0'+(143+S.disputes.filter(d=>d.period==='2026-08').length);
+    S.disputes.unshift({id,bottler:'B01',period:'2026-08',line:l.line,reason:$('#dreason').value,desc,evidence:$('#devid').value,claimed:r2(claim),status:'Submitted',credit:0,raisedBy:'Dana Whitfield (B01)',raised:NOW().slice(0,10)});
+    log('Disputes','Dispute raised',id,'B01 · '+l.line+' · '+usd(claim)); notify('fin','New dispute '+id+' from Great Lakes Bottling Co.: '+usd(claim)+'.'); S.drawer=null; S.page='mydisputes'; toast('Dispute '+id+' submitted'); },
+  'open-dispute':(el)=>{ S.drawer={type:'dispute-view',id:el.dataset.id}; },
+  decide:(el)=>{ const x = S.disputes.find(z=>z.id===S.drawer.id); const approve = el.dataset.v==='approve'; const credit = approve?r2(parseFloat($('#dcredit').value)||0):0; const note = $('#dnote').value.trim()||'—';
+    if(approve && !(credit>0)){ toast('Enter a credit above $0'); return 'norender'; }
+    Object.assign(x,{status:approve?'Approved':'Rejected',credit,decidedBy:'Mark Ellison',decided:NOW().slice(0,10),note});
+    if(approve){ S.exclusions.push({id:'EX-0'+(S.exclusions.length+1),type:'Business partner',value:'TEST CARRIER 01',reason:'Test carrier (from '+x.id+')',vol:690,since:'2026-09-01'}); log('Attribution','Exclusion added','TEST CARRIER 01','From dispute '+x.id+', effective September','fin'); }
+    log('Disputes',approve?'Dispute approved':'Dispute rejected',x.id,approve?'Credit '+usd(credit)+' carried to September':note); notify('bot','Dispute '+x.id+' '+(approve?'approved: '+usd(credit)+' credit on your September statement.':'rejected.')); notify('aud','Dispute '+x.id+' '+x.status.toLowerCase()+' by Mark Ellison.'); S.drawer=null; toast(x.id+' '+x.status.toLowerCase()); },
+  close:()=>{ S.drawer=null; },
+  'close-bg':(el,e)=>{ if(e.target===el) S.drawer=null; else return 'norender'; },
+  auditcat:(el)=>{ S.filters.auditCat = el.dataset.k; },
+  dl:(el)=>{ download(el.dataset.rep, el.dataset.fmt); return 'norender'; }
+};
+function resolveItems(ids){
+  let n=0, rules=0;
+  ids.forEach(id=>{ const i = S.suspense.findIndex(s=>s.id===id); if(i<0) return; const s = S.suspense.splice(i,1)[0]; s.by='Priya Raman'; s.at=NOW();
+    if (s.saveRule){ const typ = s.key.startsWith('User')?'IAS user group':s.key.startsWith('Location')?'Location':s.key.startsWith('Company')?'Company code':'Business partner';
+      const val = (s.key.match(/(BP-\d+|CC-\d+|LOC-[A-Z0-9-]+|[A-Z_]{4,})/)||[s.key])[0];
+      s.rule = 'MR-0'+(170+S.rules.length); S.rules.push({id:s.rule,type:typ,value:val,bottler:s.assign,level:typ==='Location'?3:typ==='IAS user group'?2:1,from:'2026-08-01',ver:1,by:'Priya Raman'}); rules++; }
+    S.resolved.push(s); n++;
+    log('Attribution','Suspense resolved',s.id,s.fo+' orders → '+s.assign+(s.rule?' · rule '+s.rule:''),'admin'); });
+  if (!S.suspense.length) notify('fin','Suspense cleared: 100% of August volume attributed.');
+  toast(n+' item'+(n===1?'':'s')+' assigned'+(rules?' · '+rules+' mapping rule'+(rules===1?'':'s')+' created':''));
+}
+document.addEventListener('click', e=>{
+  const el = e.target.closest('[data-act]');
+  if (!el){ if(S.menu && !e.target.closest('.menu')){ S.menu=null; render(); } return; }
+  const act = el.dataset.act; if (['sus-assign','sus-rule','alpha','repb'].includes(act)) return;
+  if (el.tagName==='BUTTON' && el.disabled) return;
+  const h = handlers[act]; if(!h) return; e.preventDefault();
+  if (h(el,e)!=='norender') render();
+});
+document.addEventListener('keydown', e=>{ if(e.key==='Escape' && (S.drawer||S.menu)){ S.drawer=null; S.menu=null; render(); } if((e.key==='Enter'||e.key===' ') && e.target.matches('a[data-act]')){ e.preventDefault(); e.target.click(); } });
+document.addEventListener('change', e=>{
+  const el = e.target; const act = el.dataset.act;
+  if (act==='sus-assign'){ S.suspense.find(s=>s.id===el.dataset.id).assign = el.value; }
+  if (act==='sus-rule'){ S.suspense.find(s=>s.id===el.dataset.id).saveRule = el.checked; }
+  if (act==='repb'){ S.filters.repBottler = el.value; }
+  if (act==='alpha'){ S.rate.alpha = (+el.value)/100; if(S.rate.approved){ S.rate.approved=false; S.rate.version++; S.rate.draftFrom='v'+(S.rate.version-1); } log('Rate card','Fixed share changed','Rate card v'+S.rate.version,'Alpha set to '+el.value+'%'); render(); }
+});
+document.addEventListener('input', e=>{ if(e.target.dataset.act==='alpha'){ const b = e.target.closest('.field').querySelector('label b'); if(b) b.textContent = e.target.value+'%'; } });
+document.addEventListener('submit', e=>{
+  e.preventDefault();
+  if (e.target.id==='ruleForm'){ const val = $('#rval').value.trim(); if(!val){ toast('Enter a key value'); return; }
+    const typ = $('#rtype').value; const id='MR-0'+(170+S.rules.length); S.rules.push({id,type:typ,value:val,bottler:$('#rbot').value,level:typ==='Location'?3:typ==='IAS user group'?2:1,from:$('#rfrom').value,ver:1,by:PERSONAS[S.persona].name});
+    log('Attribution','Mapping rule created',id,typ+' '+val+' → '+$('#rbot').value); toast('Rule '+id+' saved'); render(); }
+});
+
+render();
+})();
+</script>
+</body></html>
